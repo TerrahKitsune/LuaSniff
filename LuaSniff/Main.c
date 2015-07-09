@@ -159,9 +159,6 @@ int main(int argc, const char* argv[]){
 
 	while (TRUE){
 
-		//Clear out the buffer
-		memset(packet, 0, sizeof(PACKET_SIZE_MAX));
-
 		numbytes = recv(listen_socket, packet, PACKET_SIZE_MAX, 0);
 		if (numbytes < sizeof(IPHEADER))
 			continue;
