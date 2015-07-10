@@ -146,7 +146,7 @@ int main(int argc, const char* argv[]){
 		NULL) == SOCKET_ERROR)
 
 	{
-		printf("WSAIoctl error: %l\n", WSAGetLastError());
+		printf("WSAIoctl error: %d\n", WSAGetLastError());
 		free(packet);
 		closesocket(listen_socket);
 		WSACleanup();
