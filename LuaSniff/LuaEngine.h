@@ -10,7 +10,13 @@
 #include "lua\lauxlib.h"
 #include "lua\lualib.h"
 
+#include <conio.h>
+
 #include "IPHeader.h"
+
+static int L_cls(lua_State *L);
+
+void LoadLibs(lua_State*L);
 
 //Push a IPH as a lua table unto the lua stack
 //if trailing isnt null then it'll push it on as a tcp/udp/icmp/unknown in the table

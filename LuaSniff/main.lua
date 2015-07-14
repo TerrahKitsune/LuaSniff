@@ -50,6 +50,13 @@ string data
 
 ]]
 
+--[[Custom functions:
+void cls() -> clears the screen
+string dns(address) -> resolves a dns address
+
+
+
+]]
 --IP if its a table it'll attempt listening to the interfaces (adapters)
 --with their respective IP
 IP = {};
@@ -61,6 +68,9 @@ IP[1] = "CAROLEAN";
 
 --IP can also be nil, then it'll listen to the first non loopback interface
 --IP=nil;
+
+--After the initial script IP will be replaced by the actual active interfaces
+--Table if a table was provided, string otherwise
 
 --If this is true then the program will wait for user input on failure
 PAUSE=true;

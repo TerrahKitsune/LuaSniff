@@ -25,6 +25,10 @@ typedef struct{
 void StartCounter(Timer * t);
 double GetCounter(Timer * t);
 
+void LoadNetLibs();
+
+static int L_Resolve(lua_State *L);
+
 //Resolves your hostname into an ip address
 //returned char if not null should be freed
 char * ResolveIP(const char * ip);

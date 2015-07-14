@@ -1,5 +1,30 @@
 #include "Network.h"
 
+void LoadNetLibs(lua_State *L){
+	lua_pushcfunction(L, L_Resolve);
+	lua_setglobal(L, "dns");
+}
+
+static int L_Resolve(lua_State *L) {
+
+	size_t len;
+	const char * addr = luaL_tolstring(L, 1, &len);
+	char * ip = ResolveIP(addr);
+
+	lua_pop(L, 1);
+
+	if (ip){
+		lua_pushstring(L, ip);
+		free(ip);
+	}
+	else{
+		lua_pushnil(L);
+	}
+
+	return 1;
+}
+
+
 SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize){
 
 	SOCKET				listen_socket = -1;

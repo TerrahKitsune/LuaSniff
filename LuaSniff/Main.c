@@ -44,6 +44,8 @@ int main(int argc, const char* argv[]){
 
 	//Load all lua function libraries
 	luaL_openlibs(L);
+	LoadLibs(L);
+	LoadNetLibs(L);
 
 	if (!lua_ExecuteFile(L, "main.lua")){
 		printf("Failed to run main.lua\n");
@@ -240,6 +242,16 @@ SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int 
 		}
 
 		lua_pop(L, 1);
+
+		//Now push the addresses
+		lua_newtable(L);
+
+		for (n = 0; n < *numbsockets; n++){
+			lua_pushinteger(L, Sockets[n].Socket);
+			lua_pushstring(L, Sockets[n].addr);
+			lua_settable(L, -3);
+		}
+		lua_setglobal(L, "IP");
 	}
 	else{
 		lua_pop(L, 1);
@@ -276,7 +288,6 @@ SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int 
 			*numbsockets = 1;
 			lua_SetGlobalString(L, "IP", listenIP);
 			printf("Opened single interface %s\n", listenIP);
-			listenIP = NULL;
 		}
 	}
 

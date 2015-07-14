@@ -1,5 +1,46 @@
 #include "LuaEngine.h"
 
+void LoadLibs(lua_State*L){
+
+	lua_pushcfunction(L, L_cls);
+	lua_setglobal(L, "cls");
+}
+
+static int L_cls(lua_State *L) {
+
+	HANDLE                     hStdOut;
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	DWORD                      count;
+	DWORD                      cellCount;
+	COORD                      homeCoords = { 0, 0 };
+
+	hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (hStdOut == INVALID_HANDLE_VALUE) return 0;
+
+	if (!GetConsoleScreenBufferInfo(hStdOut, &csbi)) return 0;
+	cellCount = csbi.dwSize.X *csbi.dwSize.Y;
+
+	if (!FillConsoleOutputCharacter(
+		hStdOut,
+		(TCHAR) ' ',
+		cellCount,
+		homeCoords,
+		&count
+		)) return 0;
+
+	if (!FillConsoleOutputAttribute(
+		hStdOut,
+		csbi.wAttributes,
+		cellCount,
+		homeCoords,
+		&count
+		)) return 0;
+
+	SetConsoleCursorPosition(hStdOut, homeCoords);
+
+	return 0; 
+}
+
 void lua_PushIPHeader(lua_State*L, IPHEADER* IPH, void * trailing){
 
 	lua_newtable(L);
