@@ -255,7 +255,7 @@ int lua_CheckFunctionExists(lua_State*L, const char * func){
 	return ret;
 }
 
-int lua_PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer){
+int lua_PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * interf){
 
 	//Clean stack
 	lua_settop(L, 0);
@@ -266,14 +266,61 @@ int lua_PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer){
 	//Push table
 	lua_PushIPHeader(L, IPH, trailer);
 
+	if (interf)
+		lua_pushstring(L, interf);
+	else
+		lua_pushnil(L);
+
 	//Call 1 argument 0 results
-	if (lua_pcall(L, 1, 0,(void*)NULL) != 0){
+	if (lua_pcall(L, 2, 0,(void*)NULL) != 0){
 		printf("LUA ERROR: %s\n", lua_tostring(L, -1));
 		lua_pop(L, 1);
 		return 0;
 	}
 
 	return 1;
+}
+
+int lua_RunTick(lua_State*L){
+
+	int ret=0;
+
+	//Clean stack
+	lua_settop(L, 0);
+
+	//Push global
+	lua_getglobal(L, "Tick");
+
+	if (lua_type(L, -1) != LUA_TFUNCTION){
+
+		lua_pop(L, 1);
+
+		lua_pushinteger(L, 0);
+		lua_setglobal(L, "TICK");
+
+		printf("LUA ERROR: %s\n", "Function Tick() is not defined; disabling ticker");
+
+		return 0;
+	}
+
+	//Call 1 argument 0 results
+	if (lua_pcall(L, 0, 1, (void*)NULL) != 0){
+		printf("LUA ERROR: %s\n", lua_tostring(L, -1));
+		lua_pop(L, 1);
+		return 0;
+	}
+	else if (lua_gettop(L)>0){
+		
+		if (lua_type(L, -1) == LUA_TBOOLEAN)
+			ret = lua_toboolean(L, -1);
+		else if (lua_type(L, -1) == LUA_TNUMBER)
+			ret = lua_tointeger(L, -1) > 0;
+
+		lua_pop(L, 1);
+	}
+
+
+	return ret;
 }
 
 int lua_GetGlobalString(lua_State*L, const char * name, char * buffer, unsigned int buffersize) {

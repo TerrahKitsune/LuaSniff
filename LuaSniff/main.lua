@@ -50,17 +50,33 @@ string data
 
 ]]
 
---use this variable to set which address to listen too
---IP = "localhost";
+--IP if its a table it'll attempt listening to the interfaces (adapters)
+--with their respective IP
+IP = {};
+IP[0] = "localhost";
+IP[1] = "CAROLEAN";
+
+--IP can also be a single address
+--IP="127.0.0.1";
+
+--IP can also be nil, then it'll listen to the first non loopback interface
+--IP=nil;
 
 --If this is true then the program will wait for user input on failure
 PAUSE=true;
 
+--Time in miliseconds between the Tick function is proc-ed (Tick())
+TICK=500;
+
 --If this is set it'll modify the socket-buffer to a new size
 --this is usable if you got high traffic on your socket
---might murder your CPU if too high
+--increase if your CPU is too shit to handle the amount of data you're reciving
 --Default: 8192
 BUFFER=8192;
+
+--Scroll to the bottom for the event function defs
+--void Recv(packet, interface); = runs when a packet is recived
+--bool Tick(); = runs every tick as defined by TICK, if this returns true the progam will die
 
 function PrintIP(IPH)
 
@@ -160,7 +176,7 @@ function PrintTCP(TCP)
 	print("TCP:");
 	print("PORT: " .. tostring(TCP.source_port).." -> "..tostring(TCP.destination_port));
 	print("Ack: "..tostring(TCP.ack));
-	print("Seq: "..tostring(TCP.ack));
+	print("Seq: "..tostring(TCP.seq));
 	print("Flags: "..flags);
 	print("Data: "..msg);
 end
@@ -175,15 +191,20 @@ function PrintUDP(UDP)
 	print("Data: "..msg);
 end
 
-function Recv(packet)
+--This function runs when a packet is recived
+--Packet is a table contaning IPHEADER information
+--Interface is the IP of the interface (adapter) it was recived on
+function Recv(packet,interface)
 
-	if packet.protocol=="tcp" or packet.protocol=="udp" then
-	--	return;
-	end
+	--if true then return;end
 
 	print("\n--------------------------------------------------------------------------------");
+	print("INTERFACE: "..interface);
 	PrintIP(packet);
 
 end
+
+--If a ticker exists it'll run every milisecond as defined by TICK
+--function Tick()print("TICK");return false;end
 
 print("Lua startup script run!\n");

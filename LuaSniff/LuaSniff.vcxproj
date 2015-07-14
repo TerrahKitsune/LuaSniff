@@ -99,6 +99,7 @@
     <ClCompile Include="lua\lvm.c" />
     <ClCompile Include="lua\lzio.c" />
     <ClCompile Include="Main.c" />
+    <ClCompile Include="Network.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="IPHeader.h" />
@@ -129,6 +130,7 @@
     <ClInclude Include="lua\lundump.h" />
     <ClInclude Include="lua\lvm.h" />
     <ClInclude Include="lua\lzio.h" />
+    <ClInclude Include="Network.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

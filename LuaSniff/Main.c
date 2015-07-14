@@ -1,45 +1,30 @@
-#define _CRT_SECURE_NO_WARNINGS
-#pragma warning( disable: 4996 ) //Don't warn be about winsock deprication
-#pragma warning( disable: 4013 ) //Don't warn about extern default ints
+#include "Network.h"
 
-#include <winsock2.h>
-#include <Windows.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ws2tcpip.h>
+typedef struct{
+	SOCKET Socket;
+	char * addr;
+}SOCKET_INTERFACE;
 
-#include "LuaEngine.h"
-
-#pragma comment (lib, "Ws2_32.lib")
-
-#ifndef SIO_RCVALL
-	#define SIO_RCVALL    _WSAIOW(IOC_VENDOR,1)
-#endif
-
-//Resolves your hostname into an ip address
-//returned char if not null should be freed
-char * ResolveIP(const char * ip);
-
-void SetSocketBuffer(SOCKET socket, int buffsize);
+void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf);
+SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int pause);
+void CleanAll(SOCKET_INTERFACE *Sockets, int numbsockets);
 
 int main(int argc, const char* argv[]){
 
 	//Vars
-	char				host[128];
+	
 	WSADATA				wsa;
-	SOCKET				listen_socket = -1;
-	char*				listenIP;
-	struct sockaddr_in	socketdata;
-	int					opt = 1;
-	DWORD				dwLen = 0;
+	SOCKET_INTERFACE*   Sockets = NULL;
+	int					numbsockets=0;
 	char*				packet = malloc(PACKET_SIZE_MAX);
 	int					numbytes;
-	IPHEADER*			ip_header = NULL;
 	DWORD				test = 0;
-	int					ip_header_size = 0;
 	lua_State*			L;
 	int					pause = 0;
+	int					n;
+	int					hasMsg;
+	Timer				T;
+	int					Ticker;
 
 	if (!packet){
 
@@ -52,7 +37,6 @@ int main(int argc, const char* argv[]){
 	if (!L){
 		printf("Unable to start lua state\n");
 		free(packet);
-		closesocket(listen_socket);
 		WSACleanup();
 		_getch();
 		return -6;
@@ -64,16 +48,14 @@ int main(int argc, const char* argv[]){
 	if (!lua_ExecuteFile(L, "main.lua")){
 		printf("Failed to run main.lua\n");
 		free(packet);
-		closesocket(listen_socket);
 		WSACleanup();
 		lua_close(L);
 		_getch();
 		return -7;
 	}
 	else if (!lua_CheckFunctionExists(L, "Recv")){
-		printf("main.lua does not implement function Recv(packet)\n");
+		printf("main.lua does not implement function Recv(packet,interface)\n");
 		free(packet);
-		closesocket(listen_socket);
 		WSACleanup();
 		lua_close(L);
 		_getch();
@@ -86,100 +68,64 @@ int main(int argc, const char* argv[]){
 	WSAStartup(MAKEWORD(2, 2), &wsa);
 
 	//Init the socket; listen to everything
-	listen_socket = socket(AF_INET, SOCK_RAW, IPPROTO_IP);
-	if (listen_socket == SOCKET_ERROR)
-	{
-		printf("Socket error: %d\n", WSAGetLastError());
+
+	Sockets = ConnectAll(L, packet, &numbsockets, pause);
+
+	if (Sockets == NULL){
+		printf("No sockets connected!\n");
 		free(packet);
 		WSACleanup();
+		lua_close(L);
 		if (pause)
 			_getch();
-		return -1;
+		return -5;
 	}
-
-	if (!lua_GetGlobalString(L, "IP", host, 128)){
-		gethostname(host, 128);
-	}
-	
-	
-	listenIP = ResolveIP(host);
-	
-	//Figure which IP we want to listen too
-	if (!listenIP){
+	else if (numbsockets <= 0){
+		free(Sockets);
+		printf("No sockets connected!\n");
 		free(packet);
-		closesocket(listen_socket);
 		WSACleanup();
-		return -2;
+		lua_close(L);
 		if (pause)
 			_getch();
+		return -6;
 	}
-
-	socketdata.sin_family = AF_INET;
-	socketdata.sin_port = htons(0);
-	socketdata.sin_addr.s_addr = inet_addr(listenIP);
-
-	if (bind(listen_socket, (struct sockaddr *)&socketdata, sizeof(socketdata)) == SOCKET_ERROR)
-	{
-		printf("Bind error: d\n", WSAGetLastError());
-		free(packet);
-		closesocket(listen_socket);
-		WSACleanup();
-		return -3;
-		if (pause)
-			_getch();
-	}
-
-	printf("Bind IP: %s\n",listenIP);
-
-	SetSocketBuffer(listen_socket, lua_GetGlobalInt(L,"BUFFER",0));
-	lua_SetGlobalString(L, "IP", listenIP);
-
-	// Set socket to promiscuous mode
-	if (WSAIoctl(listen_socket,
-		SIO_RCVALL,
-		&opt,
-		sizeof(opt),
-		NULL,
-		0,
-		&dwLen,
-		NULL,
-		NULL) == SOCKET_ERROR)
-
-	{
-		printf("WSAIoctl error: %d\n", WSAGetLastError());
-		free(packet);
-		closesocket(listen_socket);
-		WSACleanup();
-		return -4;
-		if (pause)
-			_getch();
-	}	
 
 	puts("Starting...");
-
+	memset(&T, 0, sizeof(Timer));
+	StartCounter(&T);
 	while (TRUE){
 
-		numbytes = recv(listen_socket, packet, PACKET_SIZE_MAX, 0);
-		if (numbytes < sizeof(IPHEADER))
-			continue;
+		hasMsg = 0;
 
-		ip_header = (IPHEADER *)packet;
+		for (n = 0; n < numbsockets; n++){		
+			numbytes = HasData(Sockets[n].Socket, packet, PACKET_SIZE_MAX);
+			if (numbytes>0){
+				DecodeMessage(packet, numbytes, L, Sockets[n].addr);
+				hasMsg = 1;
+			}			
+		}	
 
-		//ipv4 check
-		if (HI_PART(ip_header->ver_ihl) != 4)
-			continue;
+		Ticker = lua_GetGlobalInt(L, "TICK", 0);
 
-		ip_header_size = LO_PART(ip_header->ver_ihl);
-		ip_header_size *= sizeof(DWORD); // size in 32 bits words
+		if (Ticker >0 && GetCounter(&T) > Ticker){
 
-		lua_PacketRecv(L, ip_header, &packet[ip_header_size]);
+			if (lua_RunTick(L))
+				break;
+
+			StartCounter(&T);
+		}
+		else if (!hasMsg){
+			Sleep(1);
+		}
 	}
 
 	//Cleanup
+	CleanAll(Sockets,numbsockets);
 	lua_close(L);
 	WSACleanup();
-	free(listenIP);
 	free(packet);
+	
 
 	//Press any key
 	puts("Program terminated...");
@@ -188,61 +134,151 @@ int main(int argc, const char* argv[]){
 	return 0;
 }
 
-char * ResolveIP(const char * ip)
-{
-	char				host[128];
-	ADDRINFO			*result;
-	int					resultcode;
-	struct addrinfo		*ptr = NULL;
-	char				*ret = NULL;
-	int					size;
+void CleanAll(SOCKET_INTERFACE *Sockets, int numbsockets){
+	
+	if (numbsockets > 0)
+		return;
+	
+	if (!Sockets)
+		return;
 
-	resultcode = getaddrinfo(ip, NULL, NULL, &result);
-
-	if (resultcode != 0){
-
-		printf("GetDefaultIP() Error: %d\n", resultcode);
-		return NULL;
+	int n;
+	for (n = 0; n < numbsockets; n++){
+		closesocket(Sockets[n].Socket);
+		if (Sockets[n].addr)
+			free(Sockets[n].addr);
 	}
+	free(Sockets);
+}
 
-	//Loop the results
-	host[0] = '\0';
-	for (ptr = result; ptr != NULL; ptr = ptr->ai_next){
+void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf){
 
-		//Take the first ip4 we find
-		if (ptr->ai_family == AF_INET){
-			InetNtop(AF_INET, &((struct sockaddr_in *) ptr->ai_addr)->sin_addr, host, 128);
-			break;
+	IPHEADER*	ip_header = NULL;
+	int			ip_header_size = 0;
+
+	if (size < sizeof(IPHEADER))
+		return;
+
+	ip_header = (IPHEADER *)buffer;
+
+	//ipv4 check
+	if (HI_PART(ip_header->ver_ihl) != 4)
+		return;
+
+	ip_header_size = LO_PART(ip_header->ver_ihl);
+	ip_header_size *= sizeof(DWORD); // size in 32 bits words
+
+	lua_PacketRecv(L, ip_header, &buffer[ip_header_size], interf);
+}
+
+SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int pause){
+
+	*numbsockets = 0;
+	SOCKET_INTERFACE* Sockets = NULL;
+	SOCKET Current;
+	int n;
+	const char * lstr;
+	char * listenIP = NULL;
+	char host[128];
+	int buffer = lua_GetGlobalInt(L, "BUFFER", 0);
+
+	lua_getglobal(L, "IP");
+	if (lua_type(L, -1) == LUA_TTABLE){
+
+		lua_pushnil(L);
+
+		while (lua_next(L, -2)){
+			if (lua_isstring(L, -1)){
+				(*numbsockets)++;
+			}
+			lua_pop(L, 1);
+		}
+
+		lua_pop(L, 1);
+
+		if (numbsockets <= 0){
+			puts("IP Table contains no string values\n");
+			if (pause)
+				_getch();
+			return NULL;
+		}
+
+		Sockets = (SOCKET_INTERFACE*)calloc(*numbsockets, sizeof(SOCKET_INTERFACE));
+
+		lua_getglobal(L, "IP");
+		lua_pushnil(L);
+
+		n = 0;
+		while (lua_next(L, -2)){
+			if (lua_isstring(L, -1)){
+
+				lstr = lua_tostring(L, -1);
+				Sockets[n].addr = ResolveIP(lstr);
+
+				if (!Sockets[n].addr){
+					printf("Unable to resolve address: %s\n", lstr);
+					(*numbsockets)--;
+					if (pause)
+						_getch();
+					continue;
+				}
+
+				Sockets[n].Socket = OpenReadAllSocket(Sockets[n].addr, buffer);
+
+				if (Sockets[n].Socket == SOCKET_ERROR){
+					printf("Unable to create socket for address: %s\n", Sockets[n].addr);
+					(*numbsockets)--;
+					if (pause)
+						_getch();
+					continue;
+				}
+
+				printf("Connected: %s\n", Sockets[n].addr);
+				n++;
+			}
+			lua_pop(L, 1);
+		}
+
+		lua_pop(L, 1);
+	}
+	else{
+		lua_pop(L, 1);
+
+		if (!lua_GetGlobalString(L, "IP", host, 128)){
+			gethostname(host, 128);
+		}
+
+		listenIP = ResolveIP(host);
+
+		if (!listenIP){
+			printf("Unable to resolve address: %s\n", listenIP);
+			if (pause)
+				_getch();
+			return NULL;
+		}
+
+		Current = OpenReadAllSocket(listenIP, buffer);
+
+		if (Current == SOCKET_ERROR){
+			printf("Failed to open socket with address: %s\n", listenIP);
+			closesocket(Current);
+			free(listenIP);
+			if (pause)
+				_getch();
+			return NULL;
+		}
+		else{
+			Sockets = (SOCKET_INTERFACE*)calloc(1, sizeof(SOCKET_INTERFACE));
+
+			Sockets[0].Socket = Current;
+			Sockets[0].addr = listenIP;
+
+			*numbsockets = 1;
+			lua_SetGlobalString(L, "IP", listenIP);
+			printf("Opened single interface %s\n", listenIP);
+			listenIP = NULL;
 		}
 	}
 
-	if (host[0] == '\0'){
-		printf("GetDefaultIP() Error: found no ip4 address\n");
-		return NULL;
-	}
-
-	size = strlen(host) + 1;
-	ret = malloc(size);
-	memset(ret, 0, size);
-
-	strcpy(ret, host);
-
-	return ret;
-}
-
-void SetSocketBuffer(SOCKET socket, int buffsize){
-
-	if (buffsize <= 0)
-		return;
-
-	int bufferLength;
-	int bufferLengthPtrSize = sizeof(int);
-
-
-	setsockopt(socket, SOL_SOCKET, SO_RCVBUF, (char *)&buffsize, sizeof(buffsize));
-	setsockopt(socket, SOL_SOCKET, SO_SNDBUF, (char *)&buffsize, sizeof(buffsize));
-
-	getsockopt(socket, SOL_SOCKET, SO_RCVBUF, (char *)&bufferLength, &bufferLengthPtrSize);
-
-	printf("Socket recv/send buffer set to %d bytes\n", bufferLength);
+	return Sockets;
 }

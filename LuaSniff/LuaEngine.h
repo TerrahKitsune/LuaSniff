@@ -33,7 +33,7 @@ int lua_ExecuteFile(lua_State*L, const char * file);
 int lua_CheckFunctionExists(lua_State*L, const char * func);
 
 //Run the packet recived event
-int lua_PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer);
+int lua_PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * interf);
 
 //Fill a buffer with data from the lua engine
 int lua_GetGlobalString(lua_State*L, const char * name, char * buffer, unsigned int buffersize);
@@ -46,3 +46,6 @@ int lua_GetGlobalInt(lua_State*L, const char * name, int rdefault);
 
 //Set a global string in the lua environment
 void lua_SetGlobalString(lua_State*L, const char * name, const char * str);
+
+//Procs the tick event
+int lua_RunTick(lua_State*L);
