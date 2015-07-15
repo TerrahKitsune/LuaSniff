@@ -8,6 +8,7 @@ typedef struct{
 void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf);
 SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int pause);
 void CleanAll(SOCKET_INTERFACE *Sockets, int numbsockets);
+void CheckWindowTitle(lua_State*L, char * current, int size);
 
 int main(int argc, const char* argv[]){
 
@@ -25,6 +26,7 @@ int main(int argc, const char* argv[]){
 	int					hasMsg;
 	Timer				T;
 	int					Ticker;
+	char				WindowTitle[128];
 
 	if (!packet){
 
@@ -65,6 +67,7 @@ int main(int argc, const char* argv[]){
 	}
 
 	pause = lua_GetGlobalBoolean(L, "PAUSE");
+	CheckWindowTitle(L, WindowTitle, 128);
 
 	//Init wsa
 	WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -106,7 +109,7 @@ int main(int argc, const char* argv[]){
 				DecodeMessage(packet, numbytes, L, Sockets[n].addr);
 				hasMsg = 1;
 			}			
-		}	
+		}
 
 		Ticker = lua_GetGlobalInt(L, "TICK", 0);
 
@@ -120,6 +123,8 @@ int main(int argc, const char* argv[]){
 		else if (!hasMsg){
 			Sleep(1);
 		}
+
+		CheckWindowTitle(L, WindowTitle, 128);
 	}
 
 	//Cleanup
@@ -292,4 +297,14 @@ SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int 
 	}
 
 	return Sockets;
+}
+
+void CheckWindowTitle(lua_State*L, char * current, int size){
+	
+	char temp[128];
+
+	if (lua_GetGlobalString(L, "TITLE", temp, 128) && strcmp(temp,current)!=0){
+		SetConsoleTitle(temp);
+		strncpy(current, temp, size);
+	}
 }

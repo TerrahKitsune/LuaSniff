@@ -59,9 +59,9 @@ string dns(address) -> resolves a dns address
 ]]
 --IP if its a table it'll attempt listening to the interfaces (adapters)
 --with their respective IP
-IP = {};
-IP[0] = "localhost";
-IP[1] = "CAROLEAN";
+--IP = {};
+--IP[0] = "localhost";
+--IP[1] = "CAROLEAN";
 
 --IP can also be a single address
 --IP="127.0.0.1";
@@ -83,6 +83,9 @@ TICK=500;
 --increase if your CPU is too shit to handle the amount of data you're reciving
 --Default: 8192
 BUFFER=8192;
+
+--This is the title of the console window, it'll update if changed
+TITLE="Sniffer"
 
 --Scroll to the bottom for the event function defs
 --void Recv(packet, interface); = runs when a packet is recived
@@ -147,6 +150,8 @@ ICMPCodes[13][0] = "0 = timestamp request";
 ICMPCodes[14]={};
 ICMPCodes[14][0] = "0 = timestamp reply";
 
+TotalCount = 0;
+
 function PrintICMP(ICMP)
 
 	if ICMP == nil then
@@ -206,6 +211,8 @@ end
 --Interface is the IP of the interface (adapter) it was recived on
 function Recv(packet,interface)
 
+	TotalCount = TotalCount + 1;
+
 	--if true then return;end
 
 	print("\n--------------------------------------------------------------------------------");
@@ -215,6 +222,9 @@ function Recv(packet,interface)
 end
 
 --If a ticker exists it'll run every milisecond as defined by TICK
---function Tick()print("TICK");return false;end
+function Tick()
+	TITLE = "Sniffed: "..tostring(TotalCount);
+	return false;
+end
 
 print("Lua startup script run!\n");
