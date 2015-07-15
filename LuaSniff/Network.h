@@ -28,6 +28,7 @@ double GetCounter(Timer * t);
 void LoadNetLibs();
 
 static int L_Resolve(lua_State *L);
+static int L_GetOwnHost(lua_State *L);
 
 //Resolves your hostname into an ip address
 //returned char if not null should be freed

@@ -3,6 +3,9 @@
 void LoadNetLibs(lua_State *L){
 	lua_pushcfunction(L, L_Resolve);
 	lua_setglobal(L, "dns");
+
+	lua_pushcfunction(L, L_GetOwnHost);
+	lua_setglobal(L, "GetHostName");
 }
 
 static int L_Resolve(lua_State *L) {
@@ -24,6 +27,15 @@ static int L_Resolve(lua_State *L) {
 	return 1;
 }
 
+static int L_GetOwnHost(lua_State *L){
+	
+	char buf[128];
+	buf[0] = '\0';
+	gethostname(buf, 128);
+
+	lua_pushstring(L, buf);
+	return 1;
+}
 
 SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize){
 
