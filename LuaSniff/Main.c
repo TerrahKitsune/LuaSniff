@@ -96,6 +96,8 @@ int main(int argc, const char* argv[]){
 		return -6;
 	}
 
+	lua_RunTick(L);
+
 	puts("Starting...");
 	memset(&T, 0, sizeof(Timer));
 	StartCounter(&T);
@@ -115,10 +117,10 @@ int main(int argc, const char* argv[]){
 
 		if (Ticker >0 && GetCounter(&T) > Ticker){
 
+			StartCounter(&T);
+
 			if (lua_RunTick(L))
 				break;
-
-			StartCounter(&T);
 		}
 		else if (!hasMsg){
 			Sleep(1);

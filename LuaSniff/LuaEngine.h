@@ -14,7 +14,10 @@
 
 #include "IPHeader.h"
 
+static int L_GetTextColor(lua_State *L);
+static int L_SetTextColor(lua_State *L);
 static int L_cls(lua_State *L);
+static int L_getch(lua_State *L);
 
 void LoadLibs(lua_State*L);
 

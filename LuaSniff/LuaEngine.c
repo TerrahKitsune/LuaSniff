@@ -4,6 +4,51 @@ void LoadLibs(lua_State*L){
 
 	lua_pushcfunction(L, L_cls);
 	lua_setglobal(L, "cls");
+
+	lua_pushcfunction(L, L_GetTextColor);
+	lua_setglobal(L, "GetTextColor");
+
+	lua_pushcfunction(L, L_SetTextColor);
+	lua_setglobal(L, "SetTextColor");
+
+	lua_pushcfunction(L, L_getch);
+	lua_setglobal(L, "GetChar");
+}
+
+static int L_getch(lua_State *L){
+	lua_pushinteger(L, _getch());
+	return 1;
+}
+
+static int L_GetTextColor(lua_State *L){
+
+	WORD data;
+	CONSOLE_SCREEN_BUFFER_INFO   csbi;
+	if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)){
+		data = csbi.wAttributes;
+
+		lua_pushinteger(L, HI_PART(data));
+		lua_pushinteger(L, LO_PART(data));
+	}
+	else{
+		lua_pushnil(L);
+		lua_pushnil(L);
+	}
+
+	return 2;
+}
+
+static int L_SetTextColor(lua_State *L){
+
+	int BackC = luaL_checknumber(L, 1);
+	int ForgC = luaL_checknumber(L, 2);
+
+	lua_pop(L, 2);
+
+	WORD wColor = ((BackC & 0x0F) << 4) + (ForgC & 0x0F);
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), wColor);
+
+	return 0;
 }
 
 static int L_cls(lua_State *L) {

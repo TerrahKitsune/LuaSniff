@@ -90,6 +90,8 @@ TITLE="Sniffer"
 --Scroll to the bottom for the event function defs
 --void Recv(packet, interface); = runs when a packet is recived
 --bool Tick(); = runs every tick as defined by TICK, if this returns true the progam will die
+--int,int GetTextColor(); = returns background and text-color
+--void SetTextColor(background,text); = Sets the color of the text (to be printed)
 
 function PrintIP(IPH)
 
