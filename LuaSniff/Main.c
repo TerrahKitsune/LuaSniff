@@ -1,12 +1,6 @@
 #include "Network.h"
 
-typedef struct{
-	SOCKET Socket;
-	char * addr;
-}SOCKET_INTERFACE;
-
 void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf);
-SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int pause);
 void CleanAll(SOCKET_INTERFACE *Sockets, int numbsockets);
 void CheckWindowTitle(lua_State*L, char * current, int size);
 
@@ -22,11 +16,15 @@ int main(int argc, const char* argv[]){
 	DWORD				test = 0;
 	lua_State*			L;
 	int					pause = 0;
-	int					n;
+	int					n=0;
 	int					hasMsg;
 	Timer				T;
 	int					Ticker;
 	char				WindowTitle[128];
+	int					PCAP = 0;
+	pcap_if_t*			alldevs=NULL, *d;
+
+	WindowTitle[0] = '\0';
 
 	if (!packet){
 
@@ -39,7 +37,6 @@ int main(int argc, const char* argv[]){
 	if (!L){
 		printf("Unable to start lua state\n");
 		free(packet);
-		WSACleanup();
 		_getch();
 		return -6;
 	}
@@ -52,7 +49,6 @@ int main(int argc, const char* argv[]){
 	if (!lua_ExecuteFile(L, "main.lua")){
 		printf("Failed to run main.lua\n");
 		free(packet);
-		WSACleanup();
 		lua_close(L);
 		_getch();
 		return -7;
@@ -60,7 +56,6 @@ int main(int argc, const char* argv[]){
 	else if (!lua_CheckFunctionExists(L, "Recv")){
 		printf("main.lua does not implement function Recv(packet,interface)\n");
 		free(packet);
-		WSACleanup();
 		lua_close(L);
 		_getch();
 		return -8;
@@ -69,36 +64,71 @@ int main(int argc, const char* argv[]){
 	pause = lua_GetGlobalBoolean(L, "PAUSE");
 	CheckWindowTitle(L, WindowTitle, 128);
 
-	//Init wsa
-	WSAStartup(MAKEWORD(2, 2), &wsa);
-
-	//Init the socket; listen to everything
-
-	Sockets = ConnectAll(L, packet, &numbsockets, pause);
-
-	if (Sockets == NULL){
-		printf("No sockets connected!\n");
-		free(packet);
-		WSACleanup();
-		lua_close(L);
-		if (pause)
-			_getch();
-		return -5;
+	if (lua_GetGlobalBoolean(L, "WINSOCK")){
+		PCAP = 0;
 	}
-	else if (numbsockets <= 0){
-		free(Sockets);
-		printf("No sockets connected!\n");
-		free(packet);
-		WSACleanup();
-		lua_close(L);
-		if (pause)
-			_getch();
-		return -6;
+	else if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, packet) != -1){
+		//pcap enabled
+		for (d = alldevs; d; d = d->next)
+		{
+			++n;
+		}
+
+		PCAP = n>0;
+		if (PCAP==0)
+			pcap_freealldevs(alldevs);
+	}
+
+
+	if (PCAP){
+
+		Sockets = PCAPConnectAll(L, packet, &numbsockets, pause, alldevs);
+
+		if (Sockets == NULL){
+			pcap_freealldevs(alldevs);
+			free(packet);
+			if (pause)
+				_getch();
+			return -5;
+		}
+
+	}
+	else{
+		//Init wsa
+		WSAStartup(MAKEWORD(2, 2), &wsa);
+
+		//Init the socket; listen to everything
+
+		Sockets = ConnectAll(L, packet, &numbsockets, pause);
+
+		if (Sockets == NULL){
+			printf("No sockets connected!\n");
+			free(packet);
+			WSACleanup();
+			lua_close(L);
+			if (pause)
+				_getch();
+			return -5;
+		}
+		else if (numbsockets <= 0){
+			free(Sockets);
+			printf("No sockets connected!\n");
+			free(packet);
+			WSACleanup();
+			lua_close(L);
+			if (pause)
+				_getch();
+			return -6;
+		}
 	}
 
 	lua_RunTick(L);
 
-	puts("Starting...");
+	if (PCAP)
+		puts("Starting in PCAP mode...");
+	else 
+		puts("Starting in WINSOCK mode...");
+
 	memset(&T, 0, sizeof(Timer));
 	StartCounter(&T);
 	while (TRUE){
@@ -106,7 +136,7 @@ int main(int argc, const char* argv[]){
 		hasMsg = 0;
 
 		for (n = 0; n < numbsockets; n++){		
-			numbytes = HasData(Sockets[n].Socket, packet, PACKET_SIZE_MAX);
+			numbytes = HasData(&Sockets[n], packet, PACKET_SIZE_MAX);
 			if (numbytes>0){
 				DecodeMessage(packet, numbytes, L, Sockets[n].addr);
 				hasMsg = 1;
@@ -126,16 +156,22 @@ int main(int argc, const char* argv[]){
 			Sleep(1);
 		}
 
-		CheckWindowTitle(L, WindowTitle, 128);
+		CheckWindowTitle(L, WindowTitle, 127);
 	}
 
 	//Cleanup
-	CleanAll(Sockets,numbsockets);
+	if (PCAP){
+		
+	}
+	else{
+		CleanAll(Sockets, numbsockets);
+		WSACleanup();
+	}
+
 	lua_close(L);
-	WSACleanup();
+	
 	free(packet);
 	
-
 	//Press any key
 	puts("Program terminated...");
 	if (pause)
@@ -153,7 +189,12 @@ void CleanAll(SOCKET_INTERFACE *Sockets, int numbsockets){
 
 	int n;
 	for (n = 0; n < numbsockets; n++){
-		closesocket(Sockets[n].Socket);
+
+		if (Sockets[n].fp)
+			pcap_close(Sockets[n].fp);
+		else
+			closesocket(Sockets[n].Socket);
+
 		if (Sockets[n].addr)
 			free(Sockets[n].addr);
 	}
@@ -174,139 +215,26 @@ void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf){
 	if (HI_PART(ip_header->ver_ihl) != 4)
 		return;
 
+	if (size != htons(ip_header->length)){
+		return;
+	}
+
 	ip_header_size = LO_PART(ip_header->ver_ihl);
 	ip_header_size *= sizeof(DWORD); // size in 32 bits words
 
 	lua_PacketRecv(L, ip_header, &buffer[ip_header_size], interf);
 }
 
-SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int pause){
-
-	*numbsockets = 0;
-	SOCKET_INTERFACE* Sockets = NULL;
-	SOCKET Current;
-	int n;
-	const char * lstr;
-	char * listenIP = NULL;
-	char host[128];
-	int buffer = lua_GetGlobalInt(L, "BUFFER", 0);
-
-	lua_getglobal(L, "IP");
-	if (lua_type(L, -1) == LUA_TTABLE){
-
-		lua_pushnil(L);
-
-		while (lua_next(L, -2)){
-			if (lua_isstring(L, -1)){
-				(*numbsockets)++;
-			}
-			lua_pop(L, 1);
-		}
-
-		lua_pop(L, 1);
-
-		if (numbsockets <= 0){
-			puts("IP Table contains no string values\n");
-			if (pause)
-				_getch();
-			return NULL;
-		}
-
-		Sockets = (SOCKET_INTERFACE*)calloc(*numbsockets, sizeof(SOCKET_INTERFACE));
-
-		lua_getglobal(L, "IP");
-		lua_pushnil(L);
-
-		n = 0;
-		while (lua_next(L, -2)){
-			if (lua_isstring(L, -1)){
-
-				lstr = lua_tostring(L, -1);
-				Sockets[n].addr = ResolveIP(lstr);
-
-				if (!Sockets[n].addr){
-					printf("Unable to resolve address: %s\n", lstr);
-					(*numbsockets)--;
-					if (pause)
-						_getch();
-					continue;
-				}
-
-				Sockets[n].Socket = OpenReadAllSocket(Sockets[n].addr, buffer);
-
-				if (Sockets[n].Socket == SOCKET_ERROR){
-					printf("Unable to create socket for address: %s\n", Sockets[n].addr);
-					(*numbsockets)--;
-					if (pause)
-						_getch();
-					continue;
-				}
-
-				printf("Connected: %s\n", Sockets[n].addr);
-				n++;
-			}
-			lua_pop(L, 1);
-		}
-
-		lua_pop(L, 1);
-
-		//Now push the addresses
-		lua_newtable(L);
-
-		for (n = 0; n < *numbsockets; n++){
-			lua_pushinteger(L, Sockets[n].Socket);
-			lua_pushstring(L, Sockets[n].addr);
-			lua_settable(L, -3);
-		}
-		lua_setglobal(L, "IP");
-	}
-	else{
-		lua_pop(L, 1);
-
-		if (!lua_GetGlobalString(L, "IP", host, 128)){
-			gethostname(host, 128);
-		}
-
-		listenIP = ResolveIP(host);
-
-		if (!listenIP){
-			printf("Unable to resolve address: %s\n", listenIP);
-			if (pause)
-				_getch();
-			return NULL;
-		}
-
-		Current = OpenReadAllSocket(listenIP, buffer);
-
-		if (Current == SOCKET_ERROR){
-			printf("Failed to open socket with address: %s\n", listenIP);
-			closesocket(Current);
-			free(listenIP);
-			if (pause)
-				_getch();
-			return NULL;
-		}
-		else{
-			Sockets = (SOCKET_INTERFACE*)calloc(1, sizeof(SOCKET_INTERFACE));
-
-			Sockets[0].Socket = Current;
-			Sockets[0].addr = listenIP;
-
-			*numbsockets = 1;
-			lua_SetGlobalString(L, "IP", listenIP);
-			printf("Opened single interface %s\n", listenIP);
-		}
-	}
-
-	return Sockets;
-}
 
 void CheckWindowTitle(lua_State*L, char * current, int size){
 	
 	char temp[128];
 
-	if (lua_GetGlobalString(L, "TITLE", temp, 128) && strcmp(temp,current)!=0){
-		SetConsoleTitle(temp);
-		strncpy(current, temp, size);
+	if (lua_GetGlobalString(L, "TITLE", temp, 127)){
+
+		if (strncmp(temp, current, size) != 0){
+			SetConsoleTitle(temp);
+			strncpy(current, temp, size - 1);
+		}
 	}
 }

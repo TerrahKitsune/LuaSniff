@@ -93,6 +93,9 @@ TITLE="Sniffer"
 --int,int GetTextColor(); = returns background and text-color
 --void SetTextColor(background,text); = Sets the color of the text (to be printed)
 
+--If true then the sniffer will attempt using winsock instead of pcap
+WINSOCK=false;
+
 function PrintIP(IPH)
 
 	print(IPH.protocol:upper().." ("..tostring(IPH.length)..")");

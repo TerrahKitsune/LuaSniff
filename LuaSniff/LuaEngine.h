@@ -58,3 +58,5 @@ void lua_SetGlobalString(lua_State*L, const char * name, const char * str);
 
 //Procs the tick event
 int lua_RunTick(lua_State*L);
+
+int lua_ValueExistsInTable(lua_State*L, const char * table, const char * value);

@@ -16,6 +16,9 @@
     <Filter Include="LUA">
       <UniqueIdentifier>{d569125a-da99-4823-8548-2684381d6efc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="pcap">
+      <UniqueIdentifier>{98f5f908-daf4-4781-bbed-6a977a2e56d5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.c">
@@ -217,6 +220,33 @@
     </ClInclude>
     <ClInclude Include="Network.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pcap\Include\bittypes.h">
+      <Filter>pcap</Filter>
+    </ClInclude>
+    <ClInclude Include="pcap\Include\ip6_misc.h">
+      <Filter>pcap</Filter>
+    </ClInclude>
+    <ClInclude Include="pcap\Include\Packet32.h">
+      <Filter>pcap</Filter>
+    </ClInclude>
+    <ClInclude Include="pcap\Include\pcap.h">
+      <Filter>pcap</Filter>
+    </ClInclude>
+    <ClInclude Include="pcap\Include\pcap-bpf.h">
+      <Filter>pcap</Filter>
+    </ClInclude>
+    <ClInclude Include="pcap\Include\pcap-namedb.h">
+      <Filter>pcap</Filter>
+    </ClInclude>
+    <ClInclude Include="pcap\Include\pcap-stdinc.h">
+      <Filter>pcap</Filter>
+    </ClInclude>
+    <ClInclude Include="pcap\Include\remote-ext.h">
+      <Filter>pcap</Filter>
+    </ClInclude>
+    <ClInclude Include="pcap\Include\Win32-Extensions.h">
+      <Filter>pcap</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

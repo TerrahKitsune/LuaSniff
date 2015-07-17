@@ -471,3 +471,38 @@ void lua_SetGlobalString(lua_State*L, const char * name, const char * str){
 	lua_pushstring(L, str);
 	lua_setglobal(L, name);
 }
+
+int lua_ValueExistsInTable(lua_State*L, const char * table, const char * value){
+
+	int ret =0;
+	const char * temp;
+
+	lua_getglobal(L, table);
+	if (lua_type(L, -1) == LUA_TTABLE){
+
+		lua_pushnil(L);
+		while (lua_next(L, -2)){
+			if (lua_isstring(L, -1)){
+
+				temp = lua_tostring(L, -1);
+
+				if (temp && strcmp(temp, value) == 0){
+					ret = 1;
+					lua_pop(L, 1);
+					break;
+				}
+			}
+			lua_pop(L, 1);
+		}
+	}
+	else if (lua_type(L, -1) == LUA_TSTRING){	
+		temp = lua_tostring(L, -1);
+		if (!temp)
+			ret = 0;
+		else
+			ret = strcmp(temp, value) == 0;
+	}
+
+	lua_pop(L, 1);
+	return ret;
+}

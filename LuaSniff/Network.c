@@ -37,6 +37,281 @@ static int L_GetOwnHost(lua_State *L){
 	return 1;
 }
 
+SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, int pause, pcap_if_t *alldevs){
+
+	SOCKET_INTERFACE* Sockets = NULL;
+	int n=0;
+	*numbsockets = 0;
+	pcap_t *fp;
+	int buffer = lua_GetGlobalInt(L, "BUFFER", 0);
+	pcap_if_t*			_alldevs, *d;
+	char errbuf[PCAP_ERRBUF_SIZE];
+	struct pcap_addr *addr;
+	const char * temp;
+	char host[128];
+	char * str;
+	char ** resolvecache;
+	int cachesize = 0;
+
+	if (buffer < 1500)
+		buffer = 1500;
+
+	for (d = alldevs; d; d = d->next)(*numbsockets)++;
+
+	if (*numbsockets <= 0)
+		return NULL;
+
+	//Resolve ip's in IP global
+
+	lua_getglobal(L, "IP");
+	if (lua_type(L, -1) == LUA_TTABLE){
+
+		lua_pushnil(L);
+
+		while (lua_next(L, -2)){
+			if (lua_isstring(L, -1)){
+				n++;
+			}
+			lua_pop(L, 1);
+		}
+
+		lua_pop(L, 1);
+
+		resolvecache = (char**)calloc(n, sizeof(char*));
+		cachesize = n;
+		lua_getglobal(L, "IP");
+
+		lua_pushnil(L);
+		n = 0;
+		while (lua_next(L, -2)){
+			if (lua_isstring(L, -1)){
+				resolvecache[n++] = ResolveIP(lua_tostring(L,-1));
+			}
+			lua_pop(L, 1);
+		}
+		lua_pop(L, 1);
+
+		lua_newtable(L);
+
+		for (n = 0; n < cachesize; n++){
+			if (resolvecache[n]){
+				lua_pushinteger(L, n);
+				lua_pushstring(L, resolvecache[n]);
+				lua_settable(L, -3);
+			}
+		}
+		lua_setglobal(L, "IP");
+
+		for (n = 0; n < cachesize; n++){
+			if (resolvecache[n])
+				free(resolvecache[n]);
+		}
+
+		free(resolvecache);
+	}
+
+	else if (lua_type(L, -1) == LUA_TSTRING){
+		str = ResolveIP(lua_tostring(L,-1));
+		if (str){
+			lua_pop(L, 1);
+			lua_SetGlobalString(L, "IP", host);
+			free(str);
+		}
+		else
+		{
+			lua_pop(L, 1);
+			gethostname(host, 127);
+			str = ResolveIP(lua_tostring(L, -1));
+			if (!str){
+				return NULL;
+			}
+			lua_SetGlobalString(L, "IP", str);
+			free(str);
+		}
+	}
+	else{
+		lua_pop(L, 1);
+		gethostname(host, 127);
+		str = ResolveIP(host);
+		if (!str){
+			return NULL;
+		}
+		lua_SetGlobalString(L, "IP", str);
+		free(str);
+	}
+
+	Sockets = (SOCKET_INTERFACE*)calloc(*numbsockets, sizeof(SOCKET_INTERFACE));
+
+	for (d = alldevs; d; d = d->next){
+
+		fp = pcap_open(d->name,
+			buffer /*snaplen*/,
+			PCAP_OPENFLAG_PROMISCUOUS /*flags*/,
+			20 /*read timeout*/,
+			NULL /* remote authentication */,
+			errbuf);
+			
+		if (fp != NULL){
+			Sockets[n].fp = fp;
+			
+			addr = d->addresses;
+			while (addr){
+				if (addr->addr->sa_family == AF_INET){
+
+					temp = inet_ntoa(((struct sockaddr_in *)addr->addr)->sin_addr);
+				
+					if (temp && lua_ValueExistsInTable(L, "IP", temp)){
+						printf("%s -> %s\n", d->description == NULL ? d->name : d->description, temp);
+						Sockets[n].addr = (char*)malloc(strlen(temp) + 1);
+						strcpy(Sockets[n].addr,temp);
+						n++;
+						break;
+					}
+				}
+
+				addr = addr->next;
+			}
+
+			temp = "0.0.0.0";
+			Sockets[n].addr = (char*)malloc(strlen(temp) + 1);
+			strcpy(Sockets[n].addr, temp);
+		}
+	}
+
+	lua_newtable(L);
+
+	for (n = 0; n < *numbsockets; n++){
+		lua_pushinteger(L, Sockets[n].Socket);
+		lua_pushstring(L, Sockets[n].addr);
+		lua_settable(L, -3);
+	}
+	lua_setglobal(L, "IP");
+
+	return Sockets;
+}
+
+SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int pause){
+
+	SOCKET_INTERFACE* Sockets = NULL;
+	SOCKET Current;
+	int n;
+	const char * lstr;
+	char * listenIP = NULL;
+	char host[128];
+	int buffer = lua_GetGlobalInt(L, "BUFFER", 0);
+
+	*numbsockets = 0;
+
+	lua_getglobal(L, "IP");
+	if (lua_type(L, -1) == LUA_TTABLE){
+
+		lua_pushnil(L);
+
+		while (lua_next(L, -2)){
+			if (lua_isstring(L, -1)){
+				(*numbsockets)++;
+			}
+			lua_pop(L, 1);
+		}
+
+		lua_pop(L, 1);
+
+		if (numbsockets <= 0){
+			puts("IP Table contains no string values\n");
+			if (pause)
+				_getch();
+			return NULL;
+		}
+
+		Sockets = (SOCKET_INTERFACE*)calloc(*numbsockets, sizeof(SOCKET_INTERFACE));
+
+		lua_getglobal(L, "IP");
+		lua_pushnil(L);
+
+		n = 0;
+		while (lua_next(L, -2)){
+			if (lua_isstring(L, -1)){
+
+				lstr = lua_tostring(L, -1);
+				Sockets[n].addr = ResolveIP(lstr);
+
+				if (!Sockets[n].addr){
+					printf("Unable to resolve address: %s\n", lstr);
+					(*numbsockets)--;
+					if (pause)
+						_getch();
+					continue;
+				}
+
+				Sockets[n].Socket = OpenReadAllSocket(Sockets[n].addr, buffer);
+
+				if (Sockets[n].Socket == SOCKET_ERROR){
+					printf("Unable to create socket for address: %s\n", Sockets[n].addr);
+					(*numbsockets)--;
+					if (pause)
+						_getch();
+					continue;
+				}
+
+				printf("Connected: %s\n", Sockets[n].addr);
+				n++;
+			}
+			lua_pop(L, 1);
+		}
+
+		lua_pop(L, 1);
+
+		//Now push the addresses
+		lua_newtable(L);
+
+		for (n = 0; n < *numbsockets; n++){
+			lua_pushinteger(L, Sockets[n].Socket);
+			lua_pushstring(L, Sockets[n].addr);
+			lua_settable(L, -3);
+		}
+		lua_setglobal(L, "IP");
+	}
+	else{
+		lua_pop(L, 1);
+
+		if (!lua_GetGlobalString(L, "IP", host, 128)){
+			gethostname(host, 128);
+		}
+
+		listenIP = ResolveIP(host);
+
+		if (!listenIP){
+			printf("Unable to resolve address: %s\n", listenIP);
+			if (pause)
+				_getch();
+			return NULL;
+		}
+
+		Current = OpenReadAllSocket(listenIP, buffer);
+
+		if (Current == SOCKET_ERROR){
+			printf("Failed to open socket with address: %s\n", listenIP);
+			closesocket(Current);
+			free(listenIP);
+			if (pause)
+				_getch();
+			return NULL;
+		}
+		else{
+			Sockets = (SOCKET_INTERFACE*)calloc(1, sizeof(SOCKET_INTERFACE));
+
+			Sockets[0].Socket = Current;
+			Sockets[0].addr = listenIP;
+
+			*numbsockets = 1;
+			lua_SetGlobalString(L, "IP", listenIP);
+			printf("Opened single interface %s\n", listenIP);
+		}
+	}
+
+	return Sockets;
+}
+
 SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize){
 
 	SOCKET				listen_socket = -1;
@@ -141,19 +416,46 @@ void SetSocketBuffer(SOCKET socket, int buffsize){
 	getsockopt(socket, SOL_SOCKET, SO_RCVBUF, (char *)&bufferLength, &bufferLengthPtrSize);
 }
 
-int HasData(SOCKET socket, char * buffer, int size){
+int HasData(SOCKET_INTERFACE * socket, char * buffer, int size){
 
-	int bytes = recv(socket, buffer, size, 0);
+	int bytes;
 	int error;
+	struct pcap_pkthdr *header;
+	const BYTE *pkt_data;
 
-	if (bytes < 0){
+	if (socket == NULL)
+		return SOCKET_ERROR;
+	else if (socket->fp){
 
-		error = WSAGetLastError();
+		error = pcap_next_ex(socket->fp, &header, &pkt_data);
+		
+		if (error == 1){
 
-		if (error == WSAEWOULDBLOCK)
-			return 0;
+			if (header->len > size)
+				header->len = size;
+			else if (header->len <= 14)
+				return 0;
+
+			memcpy(buffer,pkt_data+14, header->len-14);
+
+			return header->len-14;
+		}
 		else
 			return SOCKET_ERROR;
+	}
+	else{
+		bytes = recv(socket->Socket, buffer, size, 0);
+		error;
+
+		if (bytes < 0){
+
+			error = WSAGetLastError();
+
+			if (error == WSAEWOULDBLOCK)
+				return 0;
+			else
+				return SOCKET_ERROR;
+		}
 	}
 
 	return bytes;

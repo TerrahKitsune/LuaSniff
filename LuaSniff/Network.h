@@ -11,7 +11,11 @@
 
 #include "LuaEngine.h"
 
+#define HAVE_REMOTE
+#include "pcap\Include\pcap.h"
 #pragma comment (lib, "Ws2_32.lib")
+
+#pragma comment (lib, "pcap/Lib/wpcap.lib")
 
 #ifndef SIO_RCVALL
 #define SIO_RCVALL    _WSAIOW(IOC_VENDOR,1)
@@ -21,6 +25,15 @@ typedef struct{
 	double PCFreq;
 	__int64 CounterStart;
 }Timer;
+
+typedef struct{
+	pcap_t *fp;
+	SOCKET Socket;
+	char * addr;
+}SOCKET_INTERFACE;
+
+SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int pause);
+SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, int pause, pcap_if_t *alldevs);
 
 void StartCounter(Timer * t);
 double GetCounter(Timer * t);
@@ -42,4 +55,4 @@ SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize);
 
 //Fills the buffer with data if its been recived
 //returns >0 if data arrived
-int HasData(SOCKET socket, char * buffer, int size);
+int HasData(SOCKET_INTERFACE * socket, char * buffer, int size);

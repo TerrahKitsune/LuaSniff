@@ -22,6 +22,7 @@ typedef struct _IP_HEADER_
 	WORD  hdr_chksum;     // Header check sum (16 bits)
 	DWORD source_ip;      // Source Address (32 bits)
 	DWORD destination_ip; // Destination Address (32 bits)
+	DWORD options_padding;// Options and padding (32 bits)
 } IPHEADER;
 
 typedef struct _ICMP_HEADER_
