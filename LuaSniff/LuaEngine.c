@@ -488,7 +488,7 @@ int lua_ValueExistsInTable(lua_State*L, const char * table, const char * value){
 
 				if (temp && strcmp(temp, value) == 0){
 					ret = 1;
-					lua_pop(L, 1);
+					lua_pop(L, 2);
 					break;
 				}
 			}
@@ -504,5 +504,6 @@ int lua_ValueExistsInTable(lua_State*L, const char * table, const char * value){
 	}
 
 	lua_pop(L, 1);
+
 	return ret;
 }

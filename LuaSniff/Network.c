@@ -52,6 +52,7 @@ SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, 
 	char * str;
 	char ** resolvecache;
 	int cachesize = 0;
+	int wasadded = 0;
 
 	if (buffer < 1500)
 		buffer = 1500;
@@ -142,7 +143,11 @@ SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, 
 
 	Sockets = (SOCKET_INTERFACE*)calloc(*numbsockets, sizeof(SOCKET_INTERFACE));
 
+	(*numbsockets) = 0;
+	n = 0;
 	for (d = alldevs; d; d = d->next){
+
+		wasadded = 0;
 
 		fp = pcap_open(d->name,
 			buffer /*snaplen*/,
@@ -165,6 +170,8 @@ SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, 
 						Sockets[n].addr = (char*)malloc(strlen(temp) + 1);
 						strcpy(Sockets[n].addr,temp);
 						n++;
+						(*numbsockets)++;
+						wasadded = 1;
 						break;
 					}
 				}
@@ -172,16 +179,19 @@ SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, 
 				addr = addr->next;
 			}
 
-			temp = "0.0.0.0";
-			Sockets[n].addr = (char*)malloc(strlen(temp) + 1);
-			strcpy(Sockets[n].addr, temp);
+			if (!wasadded){
+				pcap_close(fp);
+			}
 		}
 	}
 
 	lua_newtable(L);
 
 	for (n = 0; n < *numbsockets; n++){
-		lua_pushinteger(L, Sockets[n].Socket);
+		if (Sockets[n].Socket <= 0)
+			lua_pushinteger(L, n);
+		else
+			lua_pushinteger(L, Sockets[n].Socket);
 		lua_pushstring(L, Sockets[n].addr);
 		lua_settable(L, -3);
 	}

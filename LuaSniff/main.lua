@@ -59,9 +59,9 @@ string dns(address) -> resolves a dns address
 ]]
 --IP if its a table it'll attempt listening to the interfaces (adapters)
 --with their respective IP
---IP = {};
---IP[0] = "localhost";
---IP[1] = "CAROLEAN";
+IP = {};
+IP[0] = "localhost";
+IP[1] = GetHostName();
 
 --IP can also be a single address
 --IP="127.0.0.1";
@@ -218,7 +218,7 @@ function Recv(packet,interface)
 
 	TotalCount = TotalCount + 1;
 
-	--if true then return;end
+	if true then return;end
 
 	print("\n--------------------------------------------------------------------------------");
 	print("INTERFACE: "..interface);
@@ -227,7 +227,19 @@ function Recv(packet,interface)
 end
 
 --If a ticker exists it'll run every milisecond as defined by TICK
+local first = true;
 function Tick()
+
+	if first then
+
+		for k,v in pairs(IP) do
+			print(k,v);
+		end
+
+		first=false;
+		return false;
+	end
+
 	TITLE = "Sniffed: "..tostring(TotalCount);
 	return false;
 end
