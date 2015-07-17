@@ -161,7 +161,7 @@ int main(int argc, const char* argv[]){
 
 	//Cleanup
 	if (PCAP){
-		
+		pcap_freealldevs(alldevs);
 	}
 	else{
 		CleanAll(Sockets, numbsockets);
