@@ -4,6 +4,11 @@ void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf);
 void CleanAll(SOCKET_INTERFACE *Sockets, int numbsockets);
 void CheckWindowTitle(lua_State*L, char * current, int size);
 
+void Reconnect(){
+
+
+}
+
 int main(int argc, const char* argv[]){
 
 	//Vars

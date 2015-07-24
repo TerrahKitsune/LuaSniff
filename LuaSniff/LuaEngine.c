@@ -13,6 +13,15 @@ void LoadLibs(lua_State*L){
 
 	lua_pushcfunction(L, L_getch);
 	lua_setglobal(L, "GetChar");
+
+	lua_pushcfunction(L, L_kbhit);
+	lua_setglobal(L, "HasKeyDown");
+}
+
+static int L_kbhit(lua_State *L){
+
+	lua_pushboolean(L, _kbhit());
+	return 1;
 }
 
 static int L_getch(lua_State *L){
