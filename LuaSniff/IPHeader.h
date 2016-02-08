@@ -25,6 +25,16 @@ typedef struct _IP_HEADER_
 	DWORD options_padding;// Options and padding (32 bits)
 } IPHEADER;
 
+typedef struct _IPV6_HEADER_
+{
+	DWORD ver_tc_fl;			// Version (4 bits), Traffic cass (8 bits), Flow label (20 bits)
+	WORD  length;				// Total size of packet (header + data)(16 bits)
+	BYTE  next_header;			// (8 bits)
+	BYTE  hop_limit;			// (8bits)
+	BYTE source_ip[16];			// Source Address (128 bits)
+	BYTE destination_ip[16];	// Destination Address (128 bits)
+} IPV6HEADER;
+
 typedef struct _ICMP_HEADER_
 {
 	BYTE type;               // (8 bits)  

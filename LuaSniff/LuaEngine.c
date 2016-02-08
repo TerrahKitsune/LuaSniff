@@ -95,6 +95,75 @@ static int L_cls(lua_State *L) {
 	return 0; 
 }
 
+void lua_PushIPv6Address(lua_State*L, BYTE * raw) {
+
+	char buffer[128];
+	char octet[8];
+	int n;
+
+	buffer[0] = 0;
+
+	for (n = 0; n < 8; n++) {
+		if (n < 7)
+			sprintf(octet, "%02X%02X:", raw[(n * 2)], raw[(n * 2) + 1]);
+		else 
+			sprintf(octet, "%02X%02X", raw[(n * 2)], raw[(n * 2) + 1]);
+		strcat(buffer, octet);
+	}
+	
+	lua_pushstring(L, buffer);
+}
+
+DWORD GetBits(DWORD original, int start, int len) {
+
+	int end = start + len;
+	DWORD mask = (1 << (end - start)) - 1;
+	return (original >> start) & mask;
+}
+
+void * lua_PushIPv6AdditionalHeader(lua_State*L, void * start, int type) {
+
+}
+
+void lua_PushIPv6Header(lua_State*L, IPV6HEADER* IPH, void * trailing) {
+
+	BYTE*raw = (BYTE*)IPH;
+
+	lua_newtable(L);
+
+	lua_pushstring(L, "destination");
+	lua_PushIPv6Address(L,IPH->destination_ip);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "source");
+	lua_PushIPv6Address(L, IPH->source_ip);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "length");
+	lua_pushinteger(L, htons(IPH->length));
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "version");
+	lua_pushinteger(L, GetBits(IPH->ver_tc_fl,28,4));
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "trafficclass");
+	lua_pushinteger(L, GetBits(IPH->ver_tc_fl, 20, 8));
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "flowlabel");
+	lua_pushinteger(L, GetBits(IPH->ver_tc_fl, 1, 20));
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "ttl");
+	lua_pushinteger(L, IPH->hop_limit);
+	lua_settable(L, -3);
+
+	WORD next = IPH->next_header;
+	next = ntohs(next)>>4;
+	
+}
+
 void lua_PushIPHeader(lua_State*L, IPHEADER* IPH, void * trailing){
 
 	lua_newtable(L);
@@ -170,7 +239,6 @@ void lua_PushIPHeader(lua_State*L, IPHEADER* IPH, void * trailing){
 
 		lua_settable(L, -3);
 	}
-
 }
 
 void lua_PushICMP(lua_State*L, ICMPHEADER* ICMP){
@@ -216,7 +284,7 @@ void lua_PushUDP(lua_State*L, UDPHEADER* UDP, int len){
 	lua_pushstring(L, "source_port");
 	lua_pushinteger(L, ntohs(UDP->source_port));
 	lua_settable(L, -3);
-
+	
 	test = len - sizeof(UDPHEADER);
 	raw = &((BYTE*)UDP)[sizeof(UDPHEADER)];
 
@@ -350,7 +418,7 @@ int lua_CheckFunctionExists(lua_State*L, const char * func){
 	return ret;
 }
 
-int lua_PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * interf){
+int lua_IPv4PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * interf){
 
 	//Clean stack
 	lua_settop(L, 0);
@@ -368,6 +436,32 @@ int lua_PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * inte
 
 	//Call 1 argument 0 results
 	if (lua_pcall(L, 2, 0,(void*)NULL) != 0){
+		printf("LUA ERROR: %s\n", lua_tostring(L, -1));
+		lua_pop(L, 1);
+		return 0;
+	}
+
+	return 1;
+}
+
+int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char * interf) {
+
+	//Clean stack
+	lua_settop(L, 0);
+
+	//Push global
+	lua_getglobal(L, "Recv");
+
+	//Push table
+	lua_PushIPv6Header(L, IPH, trailer);
+
+	if (interf)
+		lua_pushstring(L, interf);
+	else
+		lua_pushnil(L);
+
+	//Call 1 argument 0 results
+	if (lua_pcall(L, 2, 0, (void*)NULL) != 0) {
 		printf("LUA ERROR: %s\n", lua_tostring(L, -1));
 		lua_pop(L, 1);
 		return 0;

@@ -43,7 +43,10 @@ int lua_ExecuteFile(lua_State*L, const char * file);
 int lua_CheckFunctionExists(lua_State*L, const char * func);
 
 //Run the packet recived event
-int lua_PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * interf);
+int lua_IPv4PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * interf);
+
+//Run the packet recived event
+int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char * interf);
 
 //Fill a buffer with data from the lua engine
 int lua_GetGlobalString(lua_State*L, const char * name, char * buffer, unsigned int buffersize);

@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "Network.h"
 
 void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf);
@@ -207,27 +208,33 @@ void CleanAll(SOCKET_INTERFACE *Sockets, int numbsockets){
 }
 
 void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf){
-
-	IPHEADER*	ip_header = NULL;
+	
 	int			ip_header_size = 0;
+	int			ip_ver = HI_PART(buffer[0]);	
 
-	if (size < sizeof(IPHEADER))
-		return;
+	//ipv4
+	if (ip_ver == 4) {
 
-	ip_header = (IPHEADER *)buffer;
+		IPHEADER*	ip_header = (IPHEADER *)buffer;
 
-	//ipv4 check
-	if (HI_PART(ip_header->ver_ihl) != 4)
-		return;
+		if (size != htons(ip_header->length)) {
+			return;
+		}
 
-	if (size != htons(ip_header->length)){
-		return;
+		ip_header_size = LO_PART(ip_header->ver_ihl);
+		ip_header_size *= sizeof(DWORD); // size in 32 bits words
+
+		lua_IPv4PacketRecv(L, ip_header, &buffer[ip_header_size], interf);
 	}
+	else if(ip_ver == 6) {
 
-	ip_header_size = LO_PART(ip_header->ver_ihl);
-	ip_header_size *= sizeof(DWORD); // size in 32 bits words
+		if (size < sizeof(IPV6HEADER))
+			return;
 
-	lua_PacketRecv(L, ip_header, &buffer[ip_header_size], interf);
+		IPV6HEADER*	ipv6_header = (IPV6HEADER *)buffer;
+		
+		lua_IPv6PacketRecv(L, ipv6_header, &buffer[sizeof(IPV6HEADER)], interf);
+	}
 }
 
 
