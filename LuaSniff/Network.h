@@ -1,4 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
 #pragma warning( disable: 4996 ) //Don't warn be about winsock deprication
 #pragma warning( disable: 4013 ) //Don't warn about extern default ints
 

@@ -20,6 +20,9 @@ static int L_cls(lua_State *L);
 static int L_getch(lua_State *L);
 static int L_kbhit(lua_State *L);
 
+//helper function to extract bits
+DWORD GetBits(DWORD original, int start, int len);
+
 void LoadLibs(lua_State*L);
 
 //Push a IPH as a lua table unto the lua stack
@@ -35,9 +38,24 @@ void lua_PushTCP(lua_State*L, TCPHEADER* TCP, int len);
 //Push a UDP packet onto the stack
 void lua_PushUDP(lua_State*L, UDPHEADER* UDP, int len);
 
+//Push a icmp table onto the stack
+void lua_PushIPV6ICMP(lua_State*L, IPV6ICMPHEADER* ICMP);
+
+//Push a hop by hop to the lua stack
+void lua_PushHopByHop(lua_State*L, HOP_BY_HOP* hbh, int len);
+
+//Push a ipv6 routing header to the stack
+void lua_PushRouting(lua_State*L, IPV6_ROUTING* routing, int len);
+
+//Push a ipv6 fragment to the stack
+void lua_PushIPV6Frament(lua_State*L, IPV6_FRAGMENT* fragment, int len);
+
 //Executes a file, prints error message if any
 //Returns 1 on success
 int lua_ExecuteFile(lua_State*L, const char * file);
+
+//push the name of the protocol to the lua stack
+void lua_PushProtocolName(lua_State*L, int type);
 
 //Returns 1 if a function by the name exists in the global table
 int lua_CheckFunctionExists(lua_State*L, const char * func);
@@ -46,7 +64,10 @@ int lua_CheckFunctionExists(lua_State*L, const char * func);
 int lua_IPv4PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * interf);
 
 //Run the packet recived event
-int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char * interf);
+int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char * interf, int reallen);
+
+//Pushes the payload or additional headers onto the lua stack
+void lua_PushIPv6AdditionalHeader(lua_State*L, void * start, int type, WORD len);
 
 //Fill a buffer with data from the lua engine
 int lua_GetGlobalString(lua_State*L, const char * name, char * buffer, unsigned int buffersize);

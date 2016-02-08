@@ -1,3 +1,52 @@
+--[[Packet fields (IP Header IPV6):
+string destination
+string source
+int length
+string protocol (tcp,udp,icmp,unkown)
+int ttl
+int trafficclass
+int flowlabel
+int version
+table/string/nil data (if unknown this is a string)
+]]
+
+--[[IPV6ICMP Data fields:
+
+int checksum
+int code
+int type
+
+]]
+
+--[[IPV6 Routing Data fields:
+
+int length
+string options
+int routing_type
+int segments_left
+string protocol
+table/string/nil data (if unknown this is a string)
+
+]]
+
+--[[IPV6 HOP BY HOP Data fields:
+
+int length
+string options
+string protocol
+table/string/nil data (if unknown this is a string)
+
+]]
+
+--[[IPV6 Fragment Data fields:
+
+int identification
+int res
+bool m (true on the last fragment)
+string protocol
+table/string/nil data (if unknown this is a string)
+
+]]
 
 --[[Packet fields (IP Header):
 string destination
@@ -98,7 +147,7 @@ WINSOCK=false;
 
 function PrintIP(IPH)
 
-	print(IPH.protocol:upper().." ("..tostring(IPH.length)..")");
+	print("IPv"..tostring(IPH.version).." "..IPH.protocol:upper().." ("..tostring(IPH.length)..")");
 	print(IPH.source.." -> "..IPH.destination);
 
 	if IPH.protocol=="icmp" then
@@ -211,6 +260,85 @@ function PrintUDP(UDP)
 	print("Data: "..msg);
 end
 
+function PrintHeader(IPH)
+
+	if IPH.protocol=="icmp" then
+		PrintICMP(IPH.data);
+	elseif IPH.protocol=="tcp"then
+		PrintTCP(IPH.data);
+	elseif IPH.protocol=="udp" then
+		PrintUDP(IPH.data);
+	elseif IPH.protocol=="ipv6-icmp" then
+		PrintICMPV6(IPH.data);
+	elseif IPH.protocol=="ipv6-route" then
+		PrintIPV6Route(IPH.data);
+	elseif IPH.protocol=="hopopt" then
+		PrintIPV6HopByhop(IPH.data);
+	elseif IPH.protocol=="ipv6-frag" then
+		PrintIPV6Frag(IPH.data);
+	else
+
+		if type(IPH.protocol)=="string" then
+			print("protocol: "..IPH.protocol);
+		end
+
+		--gsub to strip the bellsound from binary strings
+		if type(IPH.data)=="string" then
+			print("Data: "..IPH.data:gsub("\a", ""));
+		else
+			print("Data: "..tostring(IPH.data));
+		end
+	end
+end
+
+function PrintICMPV6(icmp)
+
+	print("IPv6-ICMP:");
+	print("checksum: "..tostring(icmp.checksum));
+	print("code: "..tostring(icmp.code));
+	print("type: "..tostring(icmp.type));
+end
+
+function PrintIPV6Route(route)
+
+	print("IPv6-Route:");
+	print("length: "..tostring(icmp.length));
+	print("options: "..tostring(icmp.options));
+	print("routing type: "..tostring(icmp.routing_type));
+	print("segments left: "..tostring(icmp.segments_left));
+	print("protocol: "..tostring(icmp.protocol));
+	PrintHeader(icmp);
+end
+
+function PrintIPV6HopByhop(hbh)
+
+	print("HOP BY HOP:");
+	print("length: "..tostring(hbh.length));
+	print("options: "..tostring(hbh.options));
+	print("protocol: "..tostring(hbh.protocol));
+	PrintHeader(hbh);
+end
+
+function PrintIPV6Frag(frag)
+
+	print("IPV6-Fragment:");
+	print("identification: "..tostring(frag.identification));
+	print("fragment offset: "..tostring(frag.fragment_offset));
+	print("res: "..tostring(frag.res));
+	print("m: "..tostring(frag.m));
+	print("protocol: "..tostring(frag.protocol));
+	PrintHeader(frag);
+end
+
+function PrintIPV6(IPH)
+
+	print("IPv"..tostring(IPH.version).." "..IPH.protocol:upper().." ("..tostring(IPH.length)..")");
+	print(IPH.source.." -> "..IPH.destination);
+
+	PrintHeader(IPH);
+
+end
+
 --This function runs when a packet is recived
 --Packet is a table contaning IPHEADER information
 --Interface is the IP of the interface (adapter) it was recived on
@@ -218,12 +346,16 @@ function Recv(packet,interface)
 
 	TotalCount = TotalCount + 1;
 
-	if true then return;end
-
 	print("\n--------------------------------------------------------------------------------");
 	print("INTERFACE: "..interface);
-	PrintIP(packet);
 
+	if packet.version==6 then
+
+		PrintIPV6(packet);
+	else
+
+		PrintIP(packet);
+	end
 end
 
 --If a ticker exists it'll run every milisecond as defined by TICK

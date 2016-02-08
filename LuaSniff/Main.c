@@ -233,7 +233,7 @@ void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf){
 
 		IPV6HEADER*	ipv6_header = (IPV6HEADER *)buffer;
 		
-		lua_IPv6PacketRecv(L, ipv6_header, &buffer[sizeof(IPV6HEADER)], interf);
+		lua_IPv6PacketRecv(L, ipv6_header, &buffer[sizeof(IPV6HEADER)], interf, size);
 	}
 }
 

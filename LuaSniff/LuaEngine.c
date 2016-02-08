@@ -121,15 +121,286 @@ DWORD GetBits(DWORD original, int start, int len) {
 	return (original >> start) & mask;
 }
 
-void * lua_PushIPv6AdditionalHeader(lua_State*L, void * start, int type) {
+void lua_PushProtocolName(lua_State*L, int type){
 
+	switch (type){
+	case 0:lua_pushstring(L,"hopopt"); break;
+	case 1:lua_pushstring(L, "icmp"); break;
+	case 2:lua_pushstring(L, "igmp"); break;
+	case 3:lua_pushstring(L, "ggp"); break;
+	case 4:lua_pushstring(L, "ip-in-ip"); break;
+	case 5:lua_pushstring(L, "st"); break;
+	case 6:lua_pushstring(L, "tcp"); break;
+	case 7:lua_pushstring(L, "cbt"); break;
+	case 8:lua_pushstring(L, "egp"); break;
+	case 9:lua_pushstring(L, "igp"); break;
+	case 10:lua_pushstring(L, "bbn-rcc-mon"); break;
+	case 11:lua_pushstring(L, "nvp-ii"); break;
+	case 12:lua_pushstring(L, "pup"); break;
+	case 13:lua_pushstring(L, "argus"); break;
+	case 14:lua_pushstring(L, "emcon"); break;
+	case 15:lua_pushstring(L, "xnet"); break;
+	case 16:lua_pushstring(L, "chaos"); break;
+	case 17:lua_pushstring(L, "udp"); break;
+	case 18:lua_pushstring(L, "mux"); break;
+	case 19:lua_pushstring(L, "dcn-meas"); break;
+	case 20:lua_pushstring(L, "hmp"); break;
+	case 21:lua_pushstring(L, "prm"); break;
+	case 22:lua_pushstring(L, "xns-idp"); break;
+	case 23:lua_pushstring(L, "truck-1"); break;
+	case 24:lua_pushstring(L, "trunk-2"); break;
+	case 25:lua_pushstring(L, "leal-1"); break;
+	case 26:lua_pushstring(L, "leaf-2"); break;
+	case 27:lua_pushstring(L, "rdp"); break;
+	case 28:lua_pushstring(L, "irtp"); break;
+	case 29:lua_pushstring(L, "iso-tp4"); break;
+	case 30:lua_pushstring(L, "netblt"); break;
+	case 31:lua_pushstring(L, "mfe-nsp"); break;
+	case 32:lua_pushstring(L, "merit-inp"); break;
+	case 33:lua_pushstring(L, "dccp"); break;
+	case 34:lua_pushstring(L, "3cp"); break;
+	case 35:lua_pushstring(L, "idpr"); break;
+	case 36:lua_pushstring(L, "xtp"); break;
+	case 37:lua_pushstring(L, "ddp"); break;
+	case 38:lua_pushstring(L, "idpr-cmtp"); break;
+	case 39:lua_pushstring(L, "tp++"); break;
+	case 40:lua_pushstring(L, "il"); break;
+	case 41:lua_pushstring(L, "ipv6"); break;
+	case 42:lua_pushstring(L, "sdrp"); break;
+	case 43:lua_pushstring(L, "ipv6-route"); break;
+	case 44:lua_pushstring(L, "ipv6-frag"); break;
+	case 45:lua_pushstring(L, "idrp"); break;
+	case 46:lua_pushstring(L, "rsvp"); break;
+	case 47:lua_pushstring(L, "gre"); break;
+	case 48:lua_pushstring(L, "mhrp"); break;
+	case 49:lua_pushstring(L, "bna"); break;
+	case 50:lua_pushstring(L, "esp"); break;
+	case 51:lua_pushstring(L, "ah"); break;
+	case 52:lua_pushstring(L, "i-nlsp"); break;
+	case 53:lua_pushstring(L, "swipe"); break;
+	case 54:lua_pushstring(L, "narp"); break;
+	case 55:lua_pushstring(L, "mobile"); break;
+	case 56:lua_pushstring(L, "tlsp"); break;
+	case 57:lua_pushstring(L, "skip"); break;
+	case 58:lua_pushstring(L, "ipv6-icmp"); break;
+	case 59:lua_pushstring(L, "ipv6-nonxt"); break;
+	case 60:lua_pushstring(L, "ipv6-opts"); break;
+	case 61:lua_pushstring(L, "any-inp"); break;
+	case 62:lua_pushstring(L, "cftp"); break;
+	case 63:lua_pushstring(L, "any-ln"); break;
+	case 64:lua_pushstring(L, "sat-expak"); break;
+	case 65:lua_pushstring(L, "kryptolan"); break;
+	case 66:lua_pushstring(L, "rvd"); break;
+	case 67:lua_pushstring(L, "ippc"); break;
+	case 68:lua_pushstring(L, "any-dfs"); break;
+	case 69:lua_pushstring(L, "sat-mon"); break;
+	case 70:lua_pushstring(L, "visa"); break;
+	case 71:lua_pushstring(L, "ipcu"); break;
+	case 72:lua_pushstring(L, "cpnx"); break;
+	case 73:lua_pushstring(L, "cphb"); break;
+	case 74:lua_pushstring(L, "wsn"); break;
+	case 75:lua_pushstring(L, "pvp"); break;
+	case 76:lua_pushstring(L, "br-sat-mon"); break;
+	case 77:lua_pushstring(L, "sun-nd"); break;
+	case 78:lua_pushstring(L, "wb-mon"); break;
+	case 79:lua_pushstring(L, "wb-expak"); break;
+	case 80:lua_pushstring(L, "iso-ip"); break;
+	case 81:lua_pushstring(L, "vmtp"); break;
+	case 82:lua_pushstring(L, "secure-vmtp"); break;
+	case 83:lua_pushstring(L, "vines"); break;
+	case 84:lua_pushstring(L, "ttp"); break;
+	case 85:lua_pushstring(L, "nsfnet-igp"); break;
+	case 86:lua_pushstring(L, "dgp"); break;
+	case 87:lua_pushstring(L, "tcf"); break;
+	case 88:lua_pushstring(L, "eigrp"); break;
+	case 89:lua_pushstring(L, "ospf"); break;
+	case 90:lua_pushstring(L, "sprite-rpc"); break;
+	case 91:lua_pushstring(L, "larp"); break;
+	case 92:lua_pushstring(L, "mtp"); break;
+	case 93:lua_pushstring(L, "ax.25"); break;
+	case 94:lua_pushstring(L, "ipip"); break;
+	case 95:lua_pushstring(L, "micp"); break;
+	case 96:lua_pushstring(L, "scc-sp"); break;
+	case 97:lua_pushstring(L, "etherip"); break;
+	case 98:lua_pushstring(L, "encap"); break;
+	case 99:lua_pushstring(L, "any-private"); break;
+	case 100:lua_pushstring(L, "gmtp"); break;
+	case 101:lua_pushstring(L, "ifmp"); break;
+	case 102:lua_pushstring(L, "pnni"); break;
+	case 103:lua_pushstring(L, "pim"); break;
+	case 104:lua_pushstring(L, "aris"); break;
+	case 105:lua_pushstring(L, "scps"); break;
+	case 106:lua_pushstring(L, "qnx"); break;
+	case 107:lua_pushstring(L, "a/n"); break;
+	case 108:lua_pushstring(L, "ipcomp"); break;
+	case 109:lua_pushstring(L, "snp"); break;
+	case 110:lua_pushstring(L, "compaq-peer"); break;
+	case 111:lua_pushstring(L, "ipx-in-ip"); break;
+	case 112:lua_pushstring(L, "vrrp"); break;
+	case 113:lua_pushstring(L, "pgm"); break;
+	case 114:lua_pushstring(L, "any-0hop"); break;
+	case 115:lua_pushstring(L, "l2tp"); break;
+	case 116:lua_pushstring(L, "ddx"); break;
+	case 117:lua_pushstring(L, "iatp"); break;
+	case 118:lua_pushstring(L, "stp"); break;
+	case 119:lua_pushstring(L, "iplt"); break;
+	case 120:lua_pushstring(L, "uti"); break;
+	case 121:lua_pushstring(L, "smp"); break;
+	case 122:lua_pushstring(L, "sm"); break;
+	case 123:lua_pushstring(L, "ptp"); break;
+	case 124:lua_pushstring(L, "is-isoveripv4"); break;
+	case 125:lua_pushstring(L, "fire"); break;
+	case 126:lua_pushstring(L, "crtp"); break;
+	case 127:lua_pushstring(L, "crudp"); break;
+	case 128:lua_pushstring(L, "sscompmce"); break;
+	case 129:lua_pushstring(L, "iplt"); break;
+	case 130:lua_pushstring(L, "sps"); break;
+	case 131:lua_pushstring(L, "pipe"); break;
+	case 132:lua_pushstring(L, "sctp"); break;
+	case 133:lua_pushstring(L, "fc"); break;
+	case 134:lua_pushstring(L, "rsvp-e2e-ignore"); break;
+	case 135:lua_pushstring(L, "mobilityheader"); break;
+	case 136:lua_pushstring(L, "udplite"); break;
+	case 137:lua_pushstring(L, "mpls-in-ip"); break;
+	case 138:lua_pushstring(L, "manet"); break;
+	case 139:lua_pushstring(L, "hip"); break;
+	case 140:lua_pushstring(L, "shim6"); break;
+	case 141:lua_pushstring(L, "wesp"); break;
+	case 142:lua_pushstring(L, "rohc"); break;
+	case 253:lua_pushstring(L, "testing/experimentation"); break;
+	case 254:lua_pushstring(L, "testing/experimentation"); break;
+	case 255:lua_pushstring(L, "reserved"); break;
+	default:lua_pushfstring(L, "unassigned (%d)", type); break;
+	}
 }
 
-void lua_PushIPv6Header(lua_State*L, IPV6HEADER* IPH, void * trailing) {
-
-	BYTE*raw = (BYTE*)IPH;
+void lua_PushHopByHop(lua_State*L, HOP_BY_HOP* hbh,int len){
 
 	lua_newtable(L);
+
+	lua_pushstring(L, "length");
+	lua_pushinteger(L, hbh->hdr_ext_len);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "options");
+	lua_pushlstring(L, hbh->options, hbh->hdr_ext_len > 14 ? 14 : hbh->hdr_ext_len);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "protocol");
+	lua_PushProtocolName(L, hbh->next_header);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "data");
+	lua_PushIPv6AdditionalHeader(L, (hbh + sizeof(HOP_BY_HOP)), hbh->next_header, len - sizeof(HOP_BY_HOP));
+	lua_settable(L, -3);
+}
+
+void lua_PushRouting(lua_State*L, IPV6_ROUTING* routing, int len){
+
+	lua_newtable(L);
+
+	lua_pushstring(L, "length");
+	lua_pushinteger(L, routing->hdr_ext_len);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "options");
+	lua_pushlstring(L, routing->data, routing->hdr_ext_len > 14 ? 14 : routing->hdr_ext_len);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "routing_type");
+	lua_pushinteger(L, routing->routing_type);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "segments_left");
+	lua_pushinteger(L, routing->segments_left);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "protocol");
+	lua_PushProtocolName(L, routing->next_header);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "data");
+	lua_PushIPv6AdditionalHeader(L, (routing + sizeof(IPV6_ROUTING)), routing->next_header, len - sizeof(IPV6_ROUTING));
+	lua_settable(L, -3);
+}
+
+void lua_PushIPV6Frament(lua_State*L, IPV6_FRAGMENT* fragment, int len){
+
+	lua_newtable(L);
+
+	lua_pushstring(L, "identification");
+	lua_pushinteger(L, fragment->identification);
+	lua_settable(L, -3);
+
+	fragment->fragmentoffset_res_m = ntohs(fragment->fragmentoffset_res_m);
+
+	lua_pushstring(L, "fragment_offset");
+	lua_pushinteger(L, GetBits(fragment->fragmentoffset_res_m, 1, 13));
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "res");
+	lua_pushinteger(L, GetBits(fragment->fragmentoffset_res_m, 13, 2));
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "m");
+	lua_pushboolean(L, GetBits(fragment->fragmentoffset_res_m, 15, 1));
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "protocol");
+	lua_PushProtocolName(L, fragment->next_header);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "data");
+	lua_PushIPv6AdditionalHeader(L, (fragment + sizeof(IPV6_FRAGMENT)), fragment->next_header, len - sizeof(IPV6_FRAGMENT));
+	lua_settable(L, -3);
+}
+
+void lua_PushIPv6AdditionalHeader(lua_State*L, void * start, int type, WORD len) {
+
+	//Something is fucked, push nil
+	if (len <= 0){
+		lua_pushnil(L);
+		return;
+	}
+
+	switch (type){
+	case PROTO_TCP: lua_PushTCP(L, start, len); break;
+	case PROTO_UDP: lua_PushUDP(L, start, len); break;
+	case PROTO_ICMP: lua_PushICMP(L, start); break;
+	case 58:lua_PushIPV6ICMP(L, start); break;
+	case 43:lua_PushRouting(L, start, len); break;
+	case 0:lua_PushHopByHop(L, start, len); break;
+	case 44:lua_PushIPV6Frament(L, start, len); break;
+	default:lua_pushlstring(L, start, len); break;
+	}
+}
+
+void lua_PushIPV6ICMP(lua_State*L, IPV6ICMPHEADER* ICMP){
+
+	lua_newtable(L);
+
+	lua_pushstring(L, "checksum");
+	lua_pushinteger(L, ICMP->checksum);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "code");
+	lua_pushinteger(L, ICMP->code);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "type");
+	lua_pushinteger(L, ICMP->type);
+	lua_settable(L, -3);
+}
+
+void lua_PushIPv6Header(lua_State*L, IPV6HEADER* IPH, void * trailing, int reallen) {
+
+	WORD len = htons(IPH->length);
+
+	lua_newtable(L);
+
+	lua_pushstring(L, "version");
+	lua_pushinteger(L, 6);
+	lua_settable(L, -3);
 
 	lua_pushstring(L, "destination");
 	lua_PushIPv6Address(L,IPH->destination_ip);
@@ -140,8 +411,10 @@ void lua_PushIPv6Header(lua_State*L, IPV6HEADER* IPH, void * trailing) {
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "length");
-	lua_pushinteger(L, htons(IPH->length));
+	lua_pushinteger(L, len);
 	lua_settable(L, -3);
+
+	IPH->ver_tc_fl = ntohl(IPH->ver_tc_fl);
 
 	lua_pushstring(L, "version");
 	lua_pushinteger(L, GetBits(IPH->ver_tc_fl,28,4));
@@ -159,8 +432,16 @@ void lua_PushIPv6Header(lua_State*L, IPV6HEADER* IPH, void * trailing) {
 	lua_pushinteger(L, IPH->hop_limit);
 	lua_settable(L, -3);
 
-	WORD next = IPH->next_header;
-	next = ntohs(next)>>4;
+	lua_pushstring(L, "protocol");
+	lua_PushProtocolName(L, IPH->next_header);
+	lua_settable(L, -3);
+
+	if (len <= 0)
+		len = (WORD)reallen - sizeof(IPV6HEADER);
+
+	lua_pushstring(L, "data");
+	lua_PushIPv6AdditionalHeader(L, trailing, IPH->next_header, len);
+	lua_settable(L, -3);
 	
 }
 
@@ -194,12 +475,7 @@ void lua_PushIPHeader(lua_State*L, IPHEADER* IPH, void * trailing){
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "protocol");
-	switch (IPH->protocol){
-	case PROTO_TCP: lua_pushstring(L, "tcp"); break;
-	case PROTO_UDP: lua_pushstring(L, "udp"); break;
-	case PROTO_ICMP: lua_pushstring(L, "icmp"); break;
-	default:lua_pushstring(L, "unknown"); break;
-	}
+	lua_PushProtocolName(L, IPH->protocol);
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "ttl");
@@ -444,7 +720,7 @@ int lua_IPv4PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * 
 	return 1;
 }
 
-int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char * interf) {
+int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char * interf, int reallen) {
 
 	//Clean stack
 	lua_settop(L, 0);
@@ -453,7 +729,7 @@ int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char 
 	lua_getglobal(L, "Recv");
 
 	//Push table
-	lua_PushIPv6Header(L, IPH, trailer);
+	lua_PushIPv6Header(L, IPH, trailer, reallen);
 
 	if (interf)
 		lua_pushstring(L, interf);
@@ -514,7 +790,6 @@ int lua_RunTick(lua_State*L){
 
 int lua_GetGlobalString(lua_State*L, const char * name, char * buffer, unsigned int buffersize) {
 
-	unsigned int size = buffersize;
 	const char * data;
 	lua_getglobal(L, name);
 	if (lua_type(L, -1) != LUA_TSTRING){
@@ -522,13 +797,13 @@ int lua_GetGlobalString(lua_State*L, const char * name, char * buffer, unsigned 
 		return 0;
 	}
 
-	data = lua_tostring(L, -1);
-
-	if (strlen(data) < size)
-		size = strlen(data);
+	unsigned int size=0;
+	data = lua_tolstring(L, -1,&size);
 
 	memset(buffer, 0, buffersize);
-	memcpy(buffer, data, buffersize);
+
+	if (size>0 && size<buffersize)
+		memcpy(buffer, data, size);
 
 	lua_pop(L, 1);
 
