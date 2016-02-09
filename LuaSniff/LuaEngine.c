@@ -40,7 +40,7 @@ void stackDump(lua_State *L) {
 		}
 		i--;
 	}
-	printf("--------------- Stack Dump Finished ---------------");
+	printf("--------------- Stack Dump Finished ---------------\n");
 }
 
 static int L_kbhit(lua_State *L){
@@ -722,7 +722,7 @@ int lua_CheckFunctionExists(lua_State*L, const char * func){
 	return ret;
 }
 
-int lua_IPv4PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * interf){
+int lua_IPv4PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * interf, const char * type){
 
 	//Clean stack
 	lua_settop(L, 0);
@@ -738,8 +738,13 @@ int lua_IPv4PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * 
 	else
 		lua_pushnil(L);
 
+	if (interf)
+		lua_pushstring(L, type);
+	else
+		lua_pushnil(L);
+
 	//Call 1 argument 0 results
-	if (lua_pcall(L, 2, 0,(void*)NULL) != 0){
+	if (lua_pcall(L, 3, 0,(void*)NULL) != 0){
 		printf("LUA ERROR: %s\n", lua_tostring(L, -1));
 		lua_pop(L, 1);
 		return 0;
@@ -748,7 +753,7 @@ int lua_IPv4PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * 
 	return 1;
 }
 
-int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char * interf, int reallen) {
+int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char * interf, int reallen, const char * type) {
 
 	//Clean stack
 	lua_settop(L, 0);
@@ -764,8 +769,13 @@ int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char 
 	else
 		lua_pushnil(L);
 
+	if (interf)
+		lua_pushstring(L, type);
+	else
+		lua_pushnil(L);
+
 	//Call 1 argument 0 results
-	if (lua_pcall(L, 2, 0, (void*)NULL) != 0) {
+	if (lua_pcall(L, 3, 0, (void*)NULL) != 0) {
 		printf("LUA ERROR: %s\n", lua_tostring(L, -1));
 		lua_pop(L, 1);
 		return 0;
@@ -845,7 +855,7 @@ int lua_GetGlobalBoolean(lua_State*L, const char * name) {
 	lua_getglobal(L, name);
 	if (lua_type(L, -1) != LUA_TBOOLEAN){
 		lua_pop(L, 1);
-		return 0;
+		return -1;
 	}
 
 	ret = lua_toboolean(L, 1);
@@ -921,6 +931,5 @@ int lua_ValueExistsInTable(lua_State*L, const char * table, const char * value){
 			ret = strcmp(temp, value) == 0;
 	}
 
-	lua_pop(L, 1);	
 	return ret;
 }

@@ -143,7 +143,8 @@ TITLE="Sniffer"
 --void SetTextColor(background,text); = Sets the color of the text (to be printed)
 
 --If true then the sniffer will attempt using winsock instead of pcap
-WINSOCK=false;
+--if nil it'll try both
+WINSOCK=nil;
 
 function PrintIP(IPH)
 
@@ -342,12 +343,13 @@ end
 --This function runs when a packet is recived
 --Packet is a table contaning IPHEADER information
 --Interface is the IP of the interface (adapter) it was recived on
-function Recv(packet,interface)
+--sniffer is the type of sniffer that got it (winsocket or pcap)
+function Recv(packet,interface,sniffer)
 
 	TotalCount = TotalCount + 1;
 
 	print("\n--------------------------------------------------------------------------------");
-	print("INTERFACE: "..interface);
+	print(sniffer.." INTERFACE: "..interface);
 
 	if packet.version==6 then
 

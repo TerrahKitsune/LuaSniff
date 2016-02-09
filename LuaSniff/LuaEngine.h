@@ -64,10 +64,10 @@ void lua_PushProtocolName(lua_State*L, int type);
 int lua_CheckFunctionExists(lua_State*L, const char * func);
 
 //Run the packet recived event
-int lua_IPv4PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * interf);
+int lua_IPv4PacketRecv(lua_State*L, IPHEADER* IPH, void * trailer, const char * interf, const char * type);
 
 //Run the packet recived event
-int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char * interf, int reallen);
+int lua_IPv6PacketRecv(lua_State*L, IPV6HEADER* IPH, void * trailer, const char * interf, int reallen, const char * type);
 
 //Pushes the payload or additional headers onto the lua stack
 void lua_PushIPv6AdditionalHeader(lua_State*L, void * start, int type, WORD len);

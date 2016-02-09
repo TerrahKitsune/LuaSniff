@@ -16,6 +16,9 @@ int main(int argc, const char* argv[]){
 	
 	WSADATA				wsa;
 	SOCKET_INTERFACE*   Sockets = NULL;
+	SOCKET_INTERFACE*   SocketsExtra = NULL;
+	SOCKET_INTERFACE*   SocketsMerge = NULL;
+	int					numbsocketsextra = 0;
 	int					numbsockets=0;
 	char*				packet = malloc(PACKET_SIZE_MAX);
 	int					numbytes;
@@ -31,6 +34,9 @@ int main(int argc, const char* argv[]){
 	pcap_if_t*			alldevs=NULL, *d;
 
 	WindowTitle[0] = '\0';
+
+	//Init wsa
+	WSAStartup(MAKEWORD(2, 2), &wsa);
 
 	if (!packet){
 
@@ -69,25 +75,30 @@ int main(int argc, const char* argv[]){
 
 	pause = lua_GetGlobalBoolean(L, "PAUSE");
 	CheckWindowTitle(L, WindowTitle, 128);
-
-	if (lua_GetGlobalBoolean(L, "WINSOCK")){
+	n = lua_GetGlobalBoolean(L, "WINSOCK");
+	if (n>0){
 		PCAP = 0;
 	}
 	else if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, packet) != -1){
+
+		if (n == -1)
+			PCAP = 2;
+
+		n = 0;
+
 		//pcap enabled
 		for (d = alldevs; d; d = d->next)
 		{
 			++n;
 		}
 
-		PCAP = n>0;
-		if (PCAP==0)
+		if (n<=0)
 			pcap_freealldevs(alldevs);
 	}
 
 	ResolveIPTable(L);
 
-	if (PCAP){
+	if (n>0){
 
 		Sockets = PCAPConnectAll(L, packet, &numbsockets, pause, alldevs);
 
@@ -98,17 +109,15 @@ int main(int argc, const char* argv[]){
 				_getch();
 			return -5;
 		}
-
 	}
-	else{
-		//Init wsa
-		WSAStartup(MAKEWORD(2, 2), &wsa);
-
+	
+	if (PCAP==0 || PCAP==2){
+		
 		//Init the socket; listen to everything
 
-		Sockets = ConnectAll(L, packet, &numbsockets, pause);
+		SocketsExtra = ConnectAll(L, packet, &numbsocketsextra, pause);
 
-		if (Sockets == NULL){
+		if (SocketsExtra == NULL){
 			printf("No sockets connected!\n");
 			free(packet);
 			WSACleanup();
@@ -117,8 +126,8 @@ int main(int argc, const char* argv[]){
 				_getch();
 			return -5;
 		}
-		else if (numbsockets <= 0){
-			free(Sockets);
+		else if (numbsocketsextra <= 0){
+			free(SocketsExtra);
 			printf("No sockets connected!\n");
 			free(packet);
 			WSACleanup();
@@ -127,6 +136,34 @@ int main(int argc, const char* argv[]){
 				_getch();
 			return -6;
 		}
+	}
+
+	if (PCAP==2){
+
+		SocketsMerge = (SOCKET_INTERFACE*)calloc(numbsockets + numbsocketsextra, sizeof(SOCKET_INTERFACE));
+
+		if (Sockets){
+
+			for (n = 0; n < numbsockets; n++){
+				memcpy(&SocketsMerge[n], &Sockets[n], sizeof(SOCKET_INTERFACE));
+			}
+			free(Sockets);
+		}
+
+		if (SocketsExtra){
+			for (n = 0; n < numbsocketsextra; n++){
+				memcpy(&SocketsMerge[n + numbsockets], &SocketsExtra[n], sizeof(SOCKET_INTERFACE));
+			}
+			free(SocketsExtra);
+		}
+		
+
+		Sockets = SocketsMerge;
+		numbsockets += numbsocketsextra;
+	}
+	else if (PCAP == 1){
+		Sockets = SocketsExtra;
+		numbsockets = numbsocketsextra;
 	}
 
 	lua_RunTick(L);
@@ -228,7 +265,7 @@ void DecodeMessage(char * buffer, int size, lua_State*L, SOCKET_INTERFACE * inte
 		ip_header_size = LO_PART(ip_header->ver_ihl);
 		ip_header_size *= sizeof(DWORD); // size in 32 bits words
 
-		lua_IPv4PacketRecv(L, ip_header, &buffer[ip_header_size], interf->addr);
+		lua_IPv4PacketRecv(L, ip_header, &buffer[ip_header_size], interf->addr, interf->fp ? "pcap" : "winsock");
 	}
 	else if(ip_ver == 6) {
 
@@ -237,7 +274,7 @@ void DecodeMessage(char * buffer, int size, lua_State*L, SOCKET_INTERFACE * inte
 
 		IPV6HEADER*	ipv6_header = (IPV6HEADER *)buffer;
 		
-		lua_IPv6PacketRecv(L, ipv6_header, &buffer[sizeof(IPV6HEADER)], interf->addrv6, size);
+		lua_IPv6PacketRecv(L, ipv6_header, &buffer[sizeof(IPV6HEADER)], interf->addrv6, size, interf->fp ? "pcap" : "winsock");
 	}
 }
 

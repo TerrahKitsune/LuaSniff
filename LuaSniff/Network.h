@@ -59,3 +59,7 @@ SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize);
 //Fills the buffer with data if its been recived
 //returns >0 if data arrived
 int HasData(SOCKET_INTERFACE * socket, char * buffer, int size);
+
+//Returns a buffer (should be free'd) containing an error message
+//if print is true it'll print and return null
+char * FormatErrorMessage(int error, BOOL print);

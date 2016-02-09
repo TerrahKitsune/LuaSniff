@@ -115,22 +115,22 @@ void ResolveIPTable(lua_State*L) {
 			lua_pop(L, 1);
 			gethostname(host, 127);
 			str = ResolveIP(host, L);
-			if (!str) {
-				return NULL;
+			if (str) {
+
+				lua_setglobal(L, "IP");
+				free(str);
 			}
-			lua_setglobal(L, "IP");
-			free(str);
 		}
 	}
 	else {
 		lua_pop(L, 1);
 		gethostname(host, 127);
 		str = ResolveIP(host, NULL);
-		if (!str) {
-			return NULL;
+		if (str) {
+
+			lua_SetGlobalString(L, "IP", str);
+			free(str);
 		}
-		lua_SetGlobalString(L, "IP", str);
-		free(str);
 	}
 }
 
@@ -224,6 +224,46 @@ SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, 
 	return Sockets;
 }
 
+char * FormatErrorMessage(int error,BOOL print){
+
+	LPTSTR * Error=NULL;
+
+	if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+		NULL,
+		error,
+		0,
+		(LPTSTR)&Error,
+		0,
+		NULL) == 0)
+	{
+		if (Error)
+			LocalFree(Error);
+
+		if (print)puts("failed to translate error");
+	}
+
+	if (!Error){
+		
+		if (print)puts("no error message found");
+
+		return NULL;
+	}
+	else{
+
+		if (print){
+			puts(Error);
+			LocalFree(Error);
+			return NULL;
+		}
+		else{
+
+			char * buf = (char*)malloc(strlen(Error)+1);
+			strcpy(buf, Error);
+			return buf;
+		}
+	}
+}
+
 SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int pause){
 
 	SOCKET_INTERFACE* Sockets = NULL;
@@ -233,6 +273,8 @@ SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int 
 	char * listenIP = NULL;
 	char host[128];
 	int buffer = lua_GetGlobalInt(L, "BUFFER", 0);
+	const char * temp;
+	size_t len;
 
 	*numbsockets = 0;
 
@@ -244,6 +286,18 @@ SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int 
 		while (lua_next(L, -2)){
 			if (lua_isstring(L, -1)){
 				(*numbsockets)++;
+			}
+			else if(lua_istable(L,-1)){
+				
+				lua_pushnil(L);
+				while (lua_next(L, -2)){
+
+					if (lua_isstring(L, -1)){
+						(*numbsockets)++;
+					}
+
+					lua_pop(L, 1);
+				}
 			}
 			lua_pop(L, 1);
 		}
@@ -261,87 +315,62 @@ SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int 
 
 		lua_getglobal(L, "IP");
 		lua_pushnil(L);
-
 		n = 0;
 		while (lua_next(L, -2)){
 			if (lua_isstring(L, -1)){
-
-				lstr = lua_tostring(L, -1);
-				Sockets[n].addr = ResolveIP(lstr,NULL);
-
-				if (!Sockets[n].addr){
-					printf("Unable to resolve address: %s\n", lstr);
-					(*numbsockets)--;
-					if (pause)
-						_getch();
-					continue;
+				temp = lua_tolstring(L, -1, &len);
+				if (temp&&len > 0){
+					Sockets[n].addr = (char*)calloc(len + 1, 1);
+					strcpy(Sockets[n].addr, temp);
+					n++;
 				}
+			}
+			else if (lua_istable(L, -1)){
 
-				Sockets[n].Socket = OpenReadAllSocket(Sockets[n].addr, buffer);
+				lua_pushnil(L);
+				while (lua_next(L, -2)){
 
-				if (Sockets[n].Socket == SOCKET_ERROR){
-					printf("Unable to create socket for address: %s\n", Sockets[n].addr);
-					(*numbsockets)--;
-					if (pause)
-						_getch();
-					continue;
+					if (lua_isstring(L, -1)){
+						temp = lua_tolstring(L, -1, &len);
+						if (temp&&len > 0){
+
+							memset(&Sockets[n], NULL, sizeof(SOCKET_INTERFACE));
+
+							if (strstr(temp, ":")){
+								Sockets[n].addrv6 = (char*)calloc(len + 1, 1);
+								strcpy(Sockets[n].addrv6, temp);
+								Sockets[n].Socket = OpenReadAllSocket(Sockets[n].addrv6, buffer);
+							}
+							else{
+								Sockets[n].addr = (char*)calloc(len + 1, 1);
+								strcpy(Sockets[n].addr, temp);
+								Sockets[n].Socket = OpenReadAllSocket(Sockets[n].addr, buffer);
+							}
+
+							if (Sockets[n].Socket == SOCKET_ERROR){
+								FormatErrorMessage(WSAGetLastError(), TRUE);
+								if (pause)
+									_getch();
+							}
+							else{
+								if (Sockets[n].addr)
+									printf("Connected: %s\n", Sockets[n].addr);
+								else if (Sockets[n].addrv6)
+									printf("Connected: %s\n", Sockets[n].addrv6);
+							}
+
+							n++;
+						}
+					}
+
+					lua_pop(L, 1);
 				}
-
-				printf("Connected: %s\n", Sockets[n].addr);
-				n++;
 			}
 			lua_pop(L, 1);
-		}
-
-		lua_pop(L, 1);
-
-		//Now push the addresses
-		lua_newtable(L);
-
-		for (n = 0; n < *numbsockets; n++){
-			lua_pushinteger(L, Sockets[n].Socket);
-			lua_pushstring(L, Sockets[n].addr);
-			lua_settable(L, -3);
-		}
-		lua_setglobal(L, "IP");
+		}			
 	}
-	else{
-		lua_pop(L, 1);
 
-		if (!lua_GetGlobalString(L, "IP", host, 128)){
-			gethostname(host, 128);
-		}
-
-		listenIP = ResolveIP(host,NULL);
-
-		if (!listenIP){
-			printf("Unable to resolve address: %s\n", listenIP);
-			if (pause)
-				_getch();
-			return NULL;
-		}
-
-		Current = OpenReadAllSocket(listenIP, buffer);
-
-		if (Current == SOCKET_ERROR){
-			printf("Failed to open socket with address: %s\n", listenIP);
-			closesocket(Current);
-			free(listenIP);
-			if (pause)
-				_getch();
-			return NULL;
-		}
-		else{
-			Sockets = (SOCKET_INTERFACE*)calloc(1, sizeof(SOCKET_INTERFACE));
-
-			Sockets[0].Socket = Current;
-			Sockets[0].addr = listenIP;
-
-			*numbsockets = 1;
-			lua_SetGlobalString(L, "IP", listenIP);
-			printf("Opened single interface %s\n", listenIP);
-		}
-	}
+	lua_pop(L, 3);
 
 	return Sockets;
 }
@@ -353,21 +382,44 @@ SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize){
 	int					opt = 1;
 	DWORD				dwLen = 0;
 	unsigned long		ul = 1;
+	struct sockaddr_in6 socket_struct;
 
-	listen_socket = socket(AF_INET, SOCK_RAW, IPPROTO_IP);
-	if (listen_socket == SOCKET_ERROR)
-	{
-		return SOCKET_ERROR;
+	if (strstr(addr, ":")){
+
+		listen_socket = socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
+
+		if (listen_socket == SOCKET_ERROR)
+		{
+			return SOCKET_ERROR;
+		}
+	
+		socket_struct.sin6_family = AF_INET6;
+		inet_pton(AF_INET6, addr, (void *)&socket_struct.sin6_addr.s6_addr);
+		socket_struct.sin6_port = htons(0);
+		socket_struct.sin6_scope_id = 0;
+
+		if (bind(listen_socket, (struct sockaddr *)&socket_struct, sizeof(socket_struct)) == SOCKET_ERROR)
+		{
+			return SOCKET_ERROR;
+		}
 	}
+	else{
 
-	socketdata.sin_family = AF_INET;
-	socketdata.sin_port = htons(0);
-	socketdata.sin_addr.s_addr = inet_addr(addr);
+		listen_socket = socket(AF_INET, SOCK_RAW, IPPROTO_IP);
 
-	if (bind(listen_socket, (struct sockaddr *)&socketdata, sizeof(socketdata)) == SOCKET_ERROR)
-	{
-		closesocket(listen_socket);
-		return SOCKET_ERROR;
+		if (listen_socket == SOCKET_ERROR)
+		{
+			return SOCKET_ERROR;
+		}
+
+		socketdata.sin_family = AF_INET;
+		socketdata.sin_port = htons(0);
+		socketdata.sin_addr.s_addr = inet_addr(addr);
+
+		if (bind(listen_socket, (struct sockaddr *)&socketdata, sizeof(socketdata)) == SOCKET_ERROR)
+		{
+			return SOCKET_ERROR;
+		}
 	}
 
 	SetSocketBuffer(listen_socket, socketbuffersize);
@@ -386,7 +438,6 @@ SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize){
 		NULL) == SOCKET_ERROR)
 
 	{
-		closesocket(listen_socket);
 		return SOCKET_ERROR;
 	}
 
@@ -403,7 +454,14 @@ char * ResolveIP(const char * ip, lua_State*L)
 	char				*ret = NULL;
 	int					size;
 
-	resultcode = getaddrinfo(ip, NULL, NULL, &result);
+	if (ip == NULL || strlen(ip) <= 0){
+
+		host[127] = 0;
+		gethostname(host, 127);
+		resultcode = getaddrinfo(host, NULL, NULL, &result);
+	}
+	else
+		resultcode = getaddrinfo(ip, NULL, NULL, &result);
 
 	if (resultcode != 0){
 
@@ -445,8 +503,10 @@ char * ResolveIP(const char * ip, lua_State*L)
 		}
 	}
 
+	freeaddrinfo(result);
+
 	if (first[0] == '\0'){
-		printf("ResolveIP() Error: found no ip4 address\n");
+		printf("ResolveIP() Error: found no ip4 or ip6 address\n");
 		return NULL;
 	}
 
