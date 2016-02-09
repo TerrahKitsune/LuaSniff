@@ -16,6 +16,31 @@ void LoadLibs(lua_State*L){
 
 	lua_pushcfunction(L, L_kbhit);
 	lua_setglobal(L, "HasKeyDown");
+
+	lua_pushcfunction(L, stackDump);
+	lua_setglobal(L, "DumpStack");
+}
+
+void stackDump(lua_State *L) {
+	int i = lua_gettop(L);
+	printf(" ----------------  Stack Dump ----------------\n");
+	while (i) {
+		int t = lua_type(L, i);
+		switch (t) {
+		case LUA_TSTRING:
+			printf("%d:`%s'\n", i, lua_tostring(L, i));
+			break;
+		case LUA_TBOOLEAN:
+			printf("%d: %s\n", i, lua_toboolean(L, i) ? "true" : "false");
+			break;
+		case LUA_TNUMBER:
+			printf("%d: %g\n", i, lua_tonumber(L, i));
+			break;
+		default: printf("%d: %s\n", i, lua_typename(L, t)); break;
+		}
+		i--;
+	}
+	printf("--------------- Stack Dump Finished ---------------");
 }
 
 static int L_kbhit(lua_State *L){
@@ -112,7 +137,7 @@ void lua_PushIPv6Address(lua_State*L, BYTE * raw) {
 	}*/
 
 
-	InetNtop(AF_INET6, raw, buffer, 128);
+	InetNtop(AF_INET6, raw, buffer, 127);
 
 	lua_pushstring(L, buffer);
 }
@@ -864,7 +889,9 @@ int lua_ValueExistsInTable(lua_State*L, const char * table, const char * value){
 	if (lua_type(L, -1) == LUA_TTABLE){
 
 		lua_pushnil(L);
+		
 		while (lua_next(L, -2)){
+
 			if (lua_isstring(L, -1)){
 
 				temp = lua_tostring(L, -1);
@@ -879,12 +906,9 @@ int lua_ValueExistsInTable(lua_State*L, const char * table, const char * value){
 
 				if (lua_ValueExistsInTable(L,NULL, value)) {
 					ret = 1;
-					lua_pop(L, 2);
+					lua_pop(L, 1);
 					break;
-				}
-				else
-					lua_pushnil(L);
-
+				}				
 			}
 			lua_pop(L, 1);
 		}
@@ -897,7 +921,6 @@ int lua_ValueExistsInTable(lua_State*L, const char * table, const char * value){
 			ret = strcmp(temp, value) == 0;
 	}
 
-	lua_pop(L, 1);
-
+	lua_pop(L, 1);	
 	return ret;
 }

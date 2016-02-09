@@ -23,6 +23,9 @@ static int L_kbhit(lua_State *L);
 //helper function to extract bits
 DWORD GetBits(DWORD original, int start, int len);
 
+//print the stack
+void stackDump(lua_State *L);
+
 void LoadLibs(lua_State*L);
 
 //Push a IPH as a lua table unto the lua stack
