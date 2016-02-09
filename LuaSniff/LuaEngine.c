@@ -1,4 +1,4 @@
-#include "LuaEngine.h"
+#include "Network.h"
 
 void LoadLibs(lua_State*L){
 
@@ -98,7 +98,7 @@ static int L_cls(lua_State *L) {
 void lua_PushIPv6Address(lua_State*L, BYTE * raw) {
 
 	char buffer[128];
-	char octet[8];
+	/*char octet[8];
 	int n;
 
 	buffer[0] = 0;
@@ -109,8 +109,11 @@ void lua_PushIPv6Address(lua_State*L, BYTE * raw) {
 		else 
 			sprintf(octet, "%02X%02X", raw[(n * 2)], raw[(n * 2) + 1]);
 		strcat(buffer, octet);
-	}
-	
+	}*/
+
+
+	InetNtop(AF_INET6, raw, buffer, 128);
+
 	lua_pushstring(L, buffer);
 }
 
@@ -855,7 +858,9 @@ int lua_ValueExistsInTable(lua_State*L, const char * table, const char * value){
 	int ret =0;
 	const char * temp;
 
-	lua_getglobal(L, table);
+	if(table)
+		lua_getglobal(L, table);
+
 	if (lua_type(L, -1) == LUA_TTABLE){
 
 		lua_pushnil(L);
@@ -869,6 +874,17 @@ int lua_ValueExistsInTable(lua_State*L, const char * table, const char * value){
 					lua_pop(L, 2);
 					break;
 				}
+			}
+			else if (lua_istable(L,-1)) {
+
+				if (lua_ValueExistsInTable(L,NULL, value)) {
+					ret = 1;
+					lua_pop(L, 2);
+					break;
+				}
+				else
+					lua_pushnil(L);
+
 			}
 			lua_pop(L, 1);
 		}

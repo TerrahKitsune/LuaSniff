@@ -2,7 +2,6 @@
 #pragma warning( disable: 4013 ) //Don't warn about extern default ints
 
 #include <winsock2.h>
-#include <Windows.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +28,7 @@ typedef struct{
 	pcap_t *fp;
 	SOCKET Socket;
 	char * addr;
+	char * addrv6;
 }SOCKET_INTERFACE;
 
 SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int pause);
@@ -44,7 +44,11 @@ static int L_GetOwnHost(lua_State *L);
 
 //Resolves your hostname into an ip address
 //returned char if not null should be freed
-char * ResolveIP(const char * ip);
+//If L is not null it'll push all addresses to the lua stack as an array
+char * ResolveIP(const char * ip,lua_State*L);
+
+//Takes the IP table, resolves it and re-pushes it
+void ResolveIPTable(lua_State*L);
 
 //Set socket buffer
 void SetSocketBuffer(SOCKET socket, int buffsize);

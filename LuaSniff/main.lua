@@ -365,7 +365,16 @@ function Tick()
 	if first then
 
 		for k,v in pairs(IP) do
-			print(k,v);
+
+			if type(v)=="table" then
+
+				for n=1,#v do
+					print(tostring(n),tostring(v[n]));
+				end
+
+			else
+				print(tostring(k),tostring(v));
+			end
 		end
 
 		first=false;

@@ -85,6 +85,7 @@ int main(int argc, const char* argv[]){
 			pcap_freealldevs(alldevs);
 	}
 
+	ResolveIPTable(L);
 
 	if (PCAP){
 
@@ -141,10 +142,10 @@ int main(int argc, const char* argv[]){
 
 		hasMsg = 0;
 
-		for (n = 0; n < numbsockets; n++){		
+		for (n = 0; n < numbsockets; n++){	
 			numbytes = HasData(&Sockets[n], packet, PACKET_SIZE_MAX);
 			if (numbytes>0){
-				DecodeMessage(packet, numbytes, L, Sockets[n].addr);
+				DecodeMessage(packet, numbytes, L, &Sockets[n]);
 				hasMsg = 1;
 			}			
 		}
@@ -203,11 +204,14 @@ void CleanAll(SOCKET_INTERFACE *Sockets, int numbsockets){
 
 		if (Sockets[n].addr)
 			free(Sockets[n].addr);
+
+		if (Sockets[n].addrv6)
+			free(Sockets[n].addrv6);
 	}
 	free(Sockets);
 }
 
-void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf){
+void DecodeMessage(char * buffer, int size, lua_State*L, SOCKET_INTERFACE * interf){
 	
 	int			ip_header_size = 0;
 	int			ip_ver = HI_PART(buffer[0]);	
@@ -224,7 +228,7 @@ void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf){
 		ip_header_size = LO_PART(ip_header->ver_ihl);
 		ip_header_size *= sizeof(DWORD); // size in 32 bits words
 
-		lua_IPv4PacketRecv(L, ip_header, &buffer[ip_header_size], interf);
+		lua_IPv4PacketRecv(L, ip_header, &buffer[ip_header_size], interf->addr);
 	}
 	else if(ip_ver == 6) {
 
@@ -233,7 +237,7 @@ void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf){
 
 		IPV6HEADER*	ipv6_header = (IPV6HEADER *)buffer;
 		
-		lua_IPv6PacketRecv(L, ipv6_header, &buffer[sizeof(IPV6HEADER)], interf, size);
+		lua_IPv6PacketRecv(L, ipv6_header, &buffer[sizeof(IPV6HEADER)], interf->addrv6, size);
 	}
 }
 
