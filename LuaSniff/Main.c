@@ -5,6 +5,13 @@ void DecodeMessage(char * buffer, int size, lua_State*L, const char * interf);
 void CleanAll(SOCKET_INTERFACE *Sockets, int numbsockets);
 void CheckWindowTitle(lua_State*L, char * current, int size);
 
+typedef struct {
+
+	BYTE * data;
+	size_t len;
+	int index;
+}LastPacket;
+
 void Reconnect(){
 
 
@@ -32,13 +39,18 @@ int main(int argc, const char* argv[]){
 	char				WindowTitle[128];
 	int					PCAP = 0;
 	pcap_if_t*			alldevs=NULL, *d;
+	LastPacket*			lastpacket = (LastPacket*)malloc(sizeof(LastPacket));
+
+	ZeroMemory(lastpacket, sizeof(LastPacket));
+
+	lastpacket->data = malloc(PACKET_SIZE_MAX);
 
 	WindowTitle[0] = '\0';
 
 	//Init wsa
 	WSAStartup(MAKEWORD(2, 2), &wsa);
 
-	if (!packet){
+	if (!packet || !lastpacket || !lastpacket->data){
 
 		printf("malloc failed to allocate packet buffer\n");
 		return -5;
@@ -49,6 +61,8 @@ int main(int argc, const char* argv[]){
 	if (!L){
 		printf("Unable to start lua state\n");
 		free(packet);
+		free(lastpacket->data);
+		free(lastpacket);
 		_getch();
 		return -6;
 	}
@@ -61,6 +75,8 @@ int main(int argc, const char* argv[]){
 	if (!lua_ExecuteFile(L, "main.lua")){
 		printf("Failed to run main.lua\n");
 		free(packet);
+		free(lastpacket->data);
+		free(lastpacket);
 		lua_close(L);
 		_getch();
 		return -7;
@@ -68,6 +84,8 @@ int main(int argc, const char* argv[]){
 	else if (!lua_CheckFunctionExists(L, "Recv")){
 		printf("main.lua does not implement function Recv(packet,interface)\n");
 		free(packet);
+		free(lastpacket->data);
+		free(lastpacket);
 		lua_close(L);
 		_getch();
 		return -8;
@@ -75,14 +93,9 @@ int main(int argc, const char* argv[]){
 
 	pause = lua_GetGlobalBoolean(L, "PAUSE");
 	CheckWindowTitle(L, WindowTitle, 128);
-	n = lua_GetGlobalBoolean(L, "WINSOCK");
-	if (n>0){
-		PCAP = 0;
-	}
-	else if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, packet) != -1){
+	PCAP = lua_GetGlobalBoolean(L, "WINSOCK");
 
-		if (n == -1)
-			PCAP = 2;
+	if (PCAP<=0 && pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, packet) != -1){
 
 		n = 0;
 
@@ -105,13 +118,15 @@ int main(int argc, const char* argv[]){
 		if (Sockets == NULL){
 			pcap_freealldevs(alldevs);
 			free(packet);
+			free(lastpacket->data);
+			free(lastpacket);
 			if (pause)
 				_getch();
 			return -5;
 		}
 	}
 	
-	if (PCAP==0 || PCAP==2){
+	if (abs(PCAP)>=1){
 		
 		//Init the socket; listen to everything
 
@@ -120,6 +135,8 @@ int main(int argc, const char* argv[]){
 		if (SocketsExtra == NULL){
 			printf("No sockets connected!\n");
 			free(packet);
+			free(lastpacket->data);
+			free(lastpacket);
 			WSACleanup();
 			lua_close(L);
 			if (pause)
@@ -130,6 +147,8 @@ int main(int argc, const char* argv[]){
 			free(SocketsExtra);
 			printf("No sockets connected!\n");
 			free(packet);
+			free(lastpacket->data);
+			free(lastpacket);
 			WSACleanup();
 			lua_close(L);
 			if (pause)
@@ -138,7 +157,7 @@ int main(int argc, const char* argv[]){
 		}
 	}
 
-	if (PCAP==2){
+	if (PCAP==-1){
 
 		SocketsMerge = (SOCKET_INTERFACE*)calloc(numbsockets + numbsocketsextra, sizeof(SOCKET_INTERFACE));
 
@@ -168,7 +187,9 @@ int main(int argc, const char* argv[]){
 
 	lua_RunTick(L);
 
-	if (PCAP)
+	if (PCAP==-1)
+		puts("Starting in PCAP/WINSOCK mode...");
+	else if (PCAP==0)
 		puts("Starting in PCAP mode...");
 	else 
 		puts("Starting in WINSOCK mode...");
@@ -182,6 +203,17 @@ int main(int argc, const char* argv[]){
 		for (n = 0; n < numbsockets; n++){	
 			numbytes = HasData(&Sockets[n], packet, PACKET_SIZE_MAX);
 			if (numbytes>0){
+
+				//ignore packet if its the same as the last we pushed
+				if (lastpacket->index != n && numbytes == lastpacket->len && lua_GetGlobalBoolean(L,"NODUP")!=0 && memcmp(packet, lastpacket->data, numbytes) == 0) {
+					continue;
+				}
+				else {
+					lastpacket->len = numbytes;
+					memcpy(lastpacket->data, packet, numbytes);
+					lastpacket->index = n;
+				}
+
 				DecodeMessage(packet, numbytes, L, &Sockets[n]);
 				hasMsg = 1;
 			}			
@@ -215,6 +247,8 @@ int main(int argc, const char* argv[]){
 	lua_close(L);
 	
 	free(packet);
+	free(lastpacket->data);
+	free(lastpacket);
 	
 	//Press any key
 	puts("Program terminated...");

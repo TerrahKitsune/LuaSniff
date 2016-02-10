@@ -474,7 +474,7 @@ void lua_PushIPv6Header(lua_State*L, IPV6HEADER* IPH, void * trailing, int reall
 }
 
 void lua_PushIPHeader(lua_State*L, IPHEADER* IPH, void * trailing){
-
+	
 	lua_newtable(L);
 
 	struct in_addr in;
@@ -615,7 +615,7 @@ void lua_PushTCP(lua_State*L, TCPHEADER* TCP, int len){
 	lua_newtable(L);
 	
 	lua_pushstring(L, "ack");
-	lua_pushinteger(L, TCP->ack_number);
+	lua_pushinteger(L, ntohl(TCP->ack_number));
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "checksum");
@@ -627,7 +627,7 @@ void lua_PushTCP(lua_State*L, TCPHEADER* TCP, int len){
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "seq");
-	lua_pushinteger(L, TCP->seq_number);
+	lua_pushinteger(L, ntohl(TCP->seq_number));
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "source_port");

@@ -136,6 +136,10 @@ BUFFER=8192;
 --This is the title of the console window, it'll update if changed
 TITLE="Sniffer"
 
+--If this is true then duplicate data (with pcap and winsock)
+--will be ignored,ie; not pushed to the lua environment
+NODUP=true;
+
 --Scroll to the bottom for the event function defs
 --void Recv(packet, interface); = runs when a packet is recived
 --bool Tick(); = runs every tick as defined by TICK, if this returns true the progam will die
