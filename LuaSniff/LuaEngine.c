@@ -3,7 +3,7 @@
 void LoadLibs(lua_State*L){
 
 	lua_pushcfunction(L, L_cls);
-	lua_setglobal(L, "cls");
+	lua_setglobal(L, "CLS");
 
 	lua_pushcfunction(L, L_GetTextColor);
 	lua_setglobal(L, "GetTextColor");
@@ -12,16 +12,47 @@ void LoadLibs(lua_State*L){
 	lua_setglobal(L, "SetTextColor");
 
 	lua_pushcfunction(L, L_getch);
-	lua_setglobal(L, "GetChar");
+	lua_setglobal(L, "GetKey");
 
 	lua_pushcfunction(L, L_kbhit);
 	lua_setglobal(L, "HasKeyDown");
 
 	lua_pushcfunction(L, stackDump);
 	lua_setglobal(L, "DumpStack");
+
+	lua_pushcfunction(L, stackDump);
+	lua_setglobal(L, "DumpStack");
+
+	lua_pushcfunction(L, L_put);
+	lua_setglobal(L, "Put");
 }
 
-void stackDump(lua_State *L) {
+static int L_put(lua_State *L) {
+
+	size_t len;
+	const char * text = luaL_tolstring(L,1,&len);
+	unsigned int n;
+
+	if (len > 0) {
+
+		for (n = 0; n < len;n++) {
+
+			if (text[n] == 13) {
+				printf("\n");
+			}
+			else if (text[n] == 8) {
+				printf("\b \b");
+			}
+			else
+				printf("%c",text[n]);
+		}
+	}
+
+	lua_pop(L, 1);
+	return 0;	
+}
+
+static void stackDump(lua_State *L) {
 	int i = lua_gettop(L);
 	printf(" ----------------  Stack Dump ----------------\n");
 	while (i) {

@@ -140,15 +140,66 @@ TITLE="Sniffer"
 --will be ignored,ie; not pushed to the lua environment
 NODUP=true;
 
+--If true then the sniffer will attempt using winsock instead of pcap
+WINSOCK=false;
+
 --Scroll to the bottom for the event function defs
 --void Recv(packet, interface); = runs when a packet is recived
 --bool Tick(); = runs every tick as defined by TICK, if this returns true the progam will die
 --int,int GetTextColor(); = returns background and text-color
 --void SetTextColor(background,text); = Sets the color of the text (to be printed)
+--array DNS(address) = Resolves the address and returns a table containing its IP addresses or nil on failure
+--string GetHostName() = Get your hostname
+--void CLS() = Clears the console
+--int GetKey() = awaits a keyboard input and returns its ID (ascii) when a key is hit
+--bool HasKeyDown() = returns true if a key is pressed on the keyboard
+--void DumpStack() = prints the lua stack to the console
+--void Put(text) = puts the text (or binary) on the console as it is (no ending endline)
 
---If true then the sniffer will attempt using winsock instead of pcap
---if nil it'll try both
-WINSOCK=nil;
+--Concept function for user input
+--endkey (or nil = enter) is the key to end at
+--proc if provided as a function will run with the string as its param
+--returns what the proc returned or the string if it didnt run
+function UserInput(endkey,proc)
+
+	if endkey==nil then
+		endkey=13; -- enter
+	elseif type(endkey)~="number" then
+		endkey = tostring(endkey):byte();
+	end
+
+	if endkey < 0 or endkey > 255 then
+		endkey=13; -- enter
+	end
+
+	local str = "";
+	local key;
+
+	repeat
+
+		key = GetKey();
+
+		--esc
+		if(key==27)then
+			return nil;
+		end
+
+		Put(string.char(key));
+
+		if key==8 and str:len() > 0 then
+			str = str:sub(1,str:len()-1);
+		else
+			str = str .. string.char(key);
+		end
+
+	until key == endkey
+
+	if type(proc)=="function" then
+		return proc(str);
+	end
+
+	return str;
+end
 
 function PrintIP(IPH)
 

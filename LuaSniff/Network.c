@@ -2,7 +2,7 @@
 
 void LoadNetLibs(lua_State *L){
 	lua_pushcfunction(L, L_Resolve);
-	lua_setglobal(L, "dns");
+	lua_setglobal(L, "DNS");
 
 	lua_pushcfunction(L, L_GetOwnHost);
 	lua_setglobal(L, "GetHostName");
