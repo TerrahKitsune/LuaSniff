@@ -6,6 +6,41 @@ void LoadNetLibs(lua_State *L){
 
 	lua_pushcfunction(L, L_GetOwnHost);
 	lua_setglobal(L, "GetHostName");
+
+	lua_pushcfunction(L, L_ReverseDNS);
+	lua_setglobal(L, "ReverseDNS");
+}
+
+static int L_ReverseDNS(lua_State *L){
+
+	luaL_checkstring(L, 1);
+
+	size_t len;
+	const char * addr = luaL_tolstring(L, 1, &len);
+	char * resolveaddr = (char*)malloc(len+1);
+
+	resolveaddr[len] = '\0';
+	memcpy(resolveaddr, addr, len);
+	lua_pop(L,1);
+
+	struct sockaddr_in ip4addr;
+	memset(&ip4addr, 0, sizeof(struct sockaddr_in));
+	ip4addr.sin_family = AF_INET;
+	ip4addr.sin_port = htons(0);
+	inet_pton(AF_INET, resolveaddr, &ip4addr.sin_addr);
+
+	char host[NI_MAXHOST], service[NI_MAXSERV];
+	if (getnameinfo((struct sockaddr *) &ip4addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, service, NI_MAXSERV, NI_NUMERICSERV) == 0)
+	{
+		lua_pushstring(L,host);
+	}
+	else{
+		lua_pushnil(L);
+	}
+
+	free(resolveaddr);
+
+	return 1;
 }
 
 static int L_Resolve(lua_State *L) {

@@ -155,6 +155,7 @@ WINSOCK=false;
 --bool HasKeyDown() = returns true if a key is pressed on the keyboard
 --void DumpStack() = prints the lua stack to the console
 --void Put(text) = puts the text (or binary) on the console as it is (no ending endline)
+--string (nil on fail) ReverseDNS(IP) = returns the host name from an IP
 
 --Concept function for user input
 --endkey (or nil = enter) is the key to end at
@@ -201,10 +202,33 @@ function UserInput(endkey,proc)
 	return str;
 end
 
+local dnscache = {};
+function ReverseDnsCache(IP)
+
+	local host = dnscache[IP]
+	if host then
+
+		if host==IP then
+			return "";
+		end
+
+		return host;
+	else
+
+		host = ReverseDNS(IP);
+		if not host then
+			host = "";
+		end
+
+		dnscache[IP] = host;
+		return host;
+	end
+end
+
 function PrintIP(IPH)
 
 	print("IPv"..tostring(IPH.version).." "..IPH.protocol:upper().." ("..tostring(IPH.length)..")");
-	print(IPH.source.." -> "..IPH.destination);
+	print(IPH.source.." ("..ReverseDnsCache(IPH.source)..") -> "..IPH.destination.." ("..ReverseDnsCache(IPH.destination)..")");
 
 	if IPH.protocol=="icmp" then
 		PrintICMP(IPH.data);
