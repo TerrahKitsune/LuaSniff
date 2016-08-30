@@ -40,6 +40,15 @@ int main(int argc, const char* argv[]){
 	int					PCAP = 0;
 	pcap_if_t*			alldevs=NULL, *d;
 	LastPacket*			lastpacket = (LastPacket*)malloc(sizeof(LastPacket));
+	char				mainScript[MAX_PATH];
+
+	if (argc >= 2){
+		memset(mainScript,0,MAX_PATH*sizeof(char));
+		strncpy(mainScript, argv[1], MAX_PATH - 1);
+	}
+	else{
+		strcpy(mainScript,"main.lua");
+	}
 
 	ZeroMemory(lastpacket, sizeof(LastPacket));
 
@@ -72,8 +81,8 @@ int main(int argc, const char* argv[]){
 	LoadLibs(L);
 	LoadNetLibs(L);
 
-	if (!lua_ExecuteFile(L, "main.lua")){
-		printf("Failed to run main.lua\n");
+	if (!lua_ExecuteFile(L, mainScript)){
+		printf("Failed to run %s\n", mainScript);
 		free(packet);
 		free(lastpacket->data);
 		free(lastpacket);
@@ -82,13 +91,16 @@ int main(int argc, const char* argv[]){
 		return -7;
 	}
 	else if (!lua_CheckFunctionExists(L, "Recv")){
-		printf("main.lua does not implement function Recv(packet,interface)\n");
+		printf("%s does not implement function Recv(packet,interface)\n", mainScript);
 		free(packet);
 		free(lastpacket->data);
 		free(lastpacket);
 		lua_close(L);
 		_getch();
 		return -8;
+	}
+	else{
+		printf("ran %s\n", mainScript);
 	}
 
 	pause = lua_GetGlobalBoolean(L, "PAUSE");
