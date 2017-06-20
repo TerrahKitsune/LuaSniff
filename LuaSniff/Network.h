@@ -10,7 +10,7 @@
 #include "LuaEngine.h"
 
 #define HAVE_REMOTE
-#include "pcap\Include\pcap.h"
+#include "pcap.h"
 #pragma comment (lib, "Ws2_32.lib")
 
 #pragma comment (lib, "pcap/Lib/wpcap.lib")

@@ -49,11 +49,12 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)\pcap\Include\;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\pcap\Include\;$(ProjectDir)\pcap\Include\pcap\</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <DelayLoadDLLs>wpcap.dll</DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -63,13 +64,14 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)\pcap\Include\;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\pcap\Include\;$(ProjectDir)\pcap\Include\pcap\</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <DelayLoadDLLs>wpcap.dll</DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -146,7 +148,18 @@
     <ClInclude Include="pcap\Include\pcap-bpf.h" />
     <ClInclude Include="pcap\Include\pcap-namedb.h" />
     <ClInclude Include="pcap\Include\pcap-stdinc.h" />
-    <ClInclude Include="pcap\Include\pcap.h" />
+    <ClInclude Include="pcap\Include\pcap\bluetooth.h" />
+    <ClInclude Include="pcap\Include\pcap\bpf.h" />
+    <ClInclude Include="pcap\Include\pcap\can_socketcan.h" />
+    <ClInclude Include="pcap\Include\pcap\dlt.h" />
+    <ClInclude Include="pcap\Include\pcap\export-defs.h" />
+    <ClInclude Include="pcap\Include\pcap\ipnet.h" />
+    <ClInclude Include="pcap\Include\pcap\namedb.h" />
+    <ClInclude Include="pcap\Include\pcap\nflog.h" />
+    <ClInclude Include="pcap\Include\pcap\pcap.h" />
+    <ClInclude Include="pcap\Include\pcap\sll.h" />
+    <ClInclude Include="pcap\Include\pcap\usb.h" />
+    <ClInclude Include="pcap\Include\pcap\vlan.h" />
     <ClInclude Include="pcap\Include\remote-ext.h" />
     <ClInclude Include="pcap\Include\Win32-Extensions.h" />
     <ClInclude Include="resource.h" />

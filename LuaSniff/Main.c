@@ -50,6 +50,8 @@ int main(int argc, const char* argv[]){
 		strcpy(mainScript,"main.lua");
 	}
 
+	SetDllDirectory("C:\\Windows\\System32\\Npcap\\");
+
 	ZeroMemory(lastpacket, sizeof(LastPacket));
 
 	lastpacket->data = malloc(PACKET_SIZE_MAX);
@@ -304,9 +306,8 @@ void DecodeMessage(char * buffer, int size, lua_State*L, SOCKET_INTERFACE * inte
 
 		IPHEADER*	ip_header = (IPHEADER *)buffer;
 
-		if (size != htons(ip_header->length)) {
+		if (size < sizeof(IPHEADER))
 			return;
-		}
 
 		ip_header_size = LO_PART(ip_header->ver_ihl);
 		ip_header_size *= sizeof(DWORD); // size in 32 bits words

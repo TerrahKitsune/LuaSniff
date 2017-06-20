@@ -1,6 +1,6 @@
 #include "Network.h"
 
-void LoadNetLibs(lua_State *L){
+void LoadNetLibs(lua_State *L) {
 	lua_pushcfunction(L, L_Resolve);
 	lua_setglobal(L, "DNS");
 
@@ -11,17 +11,17 @@ void LoadNetLibs(lua_State *L){
 	lua_setglobal(L, "ReverseDNS");
 }
 
-static int L_ReverseDNS(lua_State *L){
+static int L_ReverseDNS(lua_State *L) {
 
 	luaL_checkstring(L, 1);
 
 	size_t len;
 	const char * addr = luaL_tolstring(L, 1, &len);
-	char * resolveaddr = (char*)malloc(len+1);
+	char * resolveaddr = (char*)malloc(len + 1);
 
 	resolveaddr[len] = '\0';
 	memcpy(resolveaddr, addr, len);
-	lua_pop(L,1);
+	lua_pop(L, 1);
 
 	struct sockaddr_in ip4addr;
 	memset(&ip4addr, 0, sizeof(struct sockaddr_in));
@@ -32,9 +32,9 @@ static int L_ReverseDNS(lua_State *L){
 	char host[NI_MAXHOST], service[NI_MAXSERV];
 	if (getnameinfo((struct sockaddr *) &ip4addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, service, NI_MAXSERV, NI_NUMERICSERV) == 0)
 	{
-		lua_pushstring(L,host);
+		lua_pushstring(L, host);
 	}
-	else{
+	else {
 		lua_pushnil(L);
 	}
 
@@ -47,22 +47,22 @@ static int L_Resolve(lua_State *L) {
 
 	size_t len;
 	const char * addr = luaL_tolstring(L, 1, &len);
-	char * ip = ResolveIP(addr,L);
+	char * ip = ResolveIP(addr, L);
 
 	lua_pop(L, 1);
 
-	if (ip){
+	if (ip) {
 		free(ip);
 	}
-	else{
+	else {
 		lua_pushnil(L);
 	}
 
 	return 1;
 }
 
-static int L_GetOwnHost(lua_State *L){
-	
+static int L_GetOwnHost(lua_State *L) {
+
 	char buf[128];
 	buf[0] = '\0';
 	gethostname(buf, 128);
@@ -169,10 +169,10 @@ void ResolveIPTable(lua_State*L) {
 	}
 }
 
-SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, int pause, pcap_if_t *alldevs){
+SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, int pause, pcap_if_t *alldevs) {
 
 	SOCKET_INTERFACE* Sockets = NULL;
-	int n=0;
+	int n = 0;
 	*numbsockets = 0;
 	pcap_t *fp;
 	int buffer = lua_GetGlobalInt(L, "BUFFER", 0);
@@ -187,6 +187,9 @@ SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, 
 	if (buffer < 1500)
 		buffer = 1500;
 
+	char *pcap_version = pcap_lib_version();
+	printf("%s", pcap_version);
+
 	for (d = alldevs; d; d = d->next)(*numbsockets)++;
 
 	if (*numbsockets <= 0)
@@ -196,7 +199,7 @@ SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, 
 
 	(*numbsockets) = 0;
 	n = 0;
-	for (d = alldevs; d; d = d->next){
+	for (d = alldevs; d; d = d->next) {
 
 		wasadded = 0;
 
@@ -206,47 +209,61 @@ SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, 
 			20 /*read timeout*/,
 			NULL /* remote authentication */,
 			errbuf);
-			
-		if (fp != NULL){
+
+		if (fp != NULL) {
 			Sockets[n].fp = fp;
-			
+
 			addr = d->addresses;
-			while (addr){
-				if (addr->addr->sa_family == AF_INET){
 
-					InetNtop(AF_INET, &addr->addr->sa_data[2], host, 128);
+			if (addr == NULL) {
 
-					temp = host;
+				temp = d->name;
 
-					if (temp){
-						printf("%s -> %s\n", d->description == NULL ? d->name : d->description, temp);
-						Sockets[n].addr = (char*)malloc(strlen(temp) + 1);
-						strcpy(Sockets[n].addr,temp);					
+				printf("%s -> %s\n", d->description == NULL ? d->name : d->description, temp);
+				Sockets[n].addr = (char*)malloc(strlen(temp) + 1);
+				strcpy(Sockets[n].addr, temp);
+
+				//if (lua_ValueExistsInTable(L, "IP", temp))
+					wasadded = 1;
+			}
+			else {
+				while (addr) {
+					if (addr->addr->sa_family == AF_INET) {
+
+						InetNtop(AF_INET, &addr->addr->sa_data[2], host, 128);
+
+						temp = host;
+
+						if (temp) {
+							printf("%s -> %s\n", d->description == NULL ? d->name : d->description, temp);
+							Sockets[n].addr = (char*)malloc(strlen(temp) + 1);
+							strcpy(Sockets[n].addr, temp);
+						}
+
+						//if (lua_ValueExistsInTable(L, "IP", temp))
+							wasadded = 1;
+					}
+					else if (addr->addr->sa_family == AF_INET6) {
+
+						InetNtop(AF_INET6, &addr->addr->sa_data[6], host, 128);
+
+						temp = host;
+
+						if (temp) {
+							printf("%s -> %s\n", d->description == NULL ? d->name : d->description, temp);
+							Sockets[n].addrv6 = (char*)malloc(strlen(temp) + 1);
+							strcpy(Sockets[n].addrv6, temp);
+						}
+
+						//if (lua_ValueExistsInTable(L, "IP", temp))
+							wasadded = 1;
 					}
 
-					if (lua_ValueExistsInTable(L, "IP", temp))
-						wasadded = 1;
+					addr = addr->next;
 				}
-				else if (addr->addr->sa_family == AF_INET6) {
-
-					InetNtop(AF_INET6, &addr->addr->sa_data[6], host, 128);
-
-					temp = host;
-
-					if (temp) {
-						printf("%s -> %s\n", d->description == NULL ? d->name : d->description, temp);
-						Sockets[n].addrv6 = (char*)malloc(strlen(temp) + 1);
-						strcpy(Sockets[n].addrv6, temp);						
-					}
-
-					if(lua_ValueExistsInTable(L, "IP", temp))
-						wasadded = 1;
-				}
-
-				addr = addr->next;
 			}
 
-			if (!wasadded){
+			if (!wasadded) {
 				pcap_close(fp);
 			}
 			else {
@@ -259,9 +276,9 @@ SOCKET_INTERFACE * PCAPConnectAll(lua_State*L, char * packet, int *numbsockets, 
 	return Sockets;
 }
 
-char * FormatErrorMessage(int error,BOOL print){
+char * FormatErrorMessage(int error, BOOL print) {
 
-	LPTSTR * Error=NULL;
+	LPTSTR * Error = NULL;
 
 	if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
 		NULL,
@@ -277,29 +294,29 @@ char * FormatErrorMessage(int error,BOOL print){
 		if (print)puts("failed to translate error");
 	}
 
-	if (!Error){
-		
+	if (!Error) {
+
 		if (print)puts("no error message found");
 
 		return NULL;
 	}
-	else{
+	else {
 
-		if (print){
+		if (print) {
 			puts(Error);
 			LocalFree(Error);
 			return NULL;
 		}
-		else{
+		else {
 
-			char * buf = (char*)malloc(strlen(Error)+1);
+			char * buf = (char*)malloc(strlen(Error) + 1);
 			strcpy(buf, Error);
 			return buf;
 		}
 	}
 }
 
-SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int pause){
+SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int pause) {
 
 	SOCKET_INTERFACE* Sockets = NULL;
 	SOCKET Current;
@@ -314,20 +331,20 @@ SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int 
 	*numbsockets = 0;
 
 	lua_getglobal(L, "IP");
-	if (lua_type(L, -1) == LUA_TTABLE){
+	if (lua_type(L, -1) == LUA_TTABLE) {
 
 		lua_pushnil(L);
 
-		while (lua_next(L, -2)){
-			if (lua_isstring(L, -1)){
+		while (lua_next(L, -2)) {
+			if (lua_isstring(L, -1)) {
 				(*numbsockets)++;
 			}
-			else if(lua_istable(L,-1)){
-				
-				lua_pushnil(L);
-				while (lua_next(L, -2)){
+			else if (lua_istable(L, -1)) {
 
-					if (lua_isstring(L, -1)){
+				lua_pushnil(L);
+				while (lua_next(L, -2)) {
+
+					if (lua_isstring(L, -1)) {
 						(*numbsockets)++;
 					}
 
@@ -339,7 +356,7 @@ SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int 
 
 		lua_pop(L, 1);
 
-		if (numbsockets <= 0){
+		if (numbsockets <= 0) {
 			puts("IP Table contains no string values\n");
 			if (pause)
 				_getch();
@@ -351,43 +368,43 @@ SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int 
 		lua_getglobal(L, "IP");
 		lua_pushnil(L);
 		n = 0;
-		while (lua_next(L, -2)){
-			if (lua_isstring(L, -1)){
+		while (lua_next(L, -2)) {
+			if (lua_isstring(L, -1)) {
 				temp = lua_tolstring(L, -1, &len);
-				if (temp&&len > 0){
+				if (temp&&len > 0) {
 					Sockets[n].addr = (char*)calloc(len + 1, 1);
 					strcpy(Sockets[n].addr, temp);
 					n++;
 				}
 			}
-			else if (lua_istable(L, -1)){
+			else if (lua_istable(L, -1)) {
 
 				lua_pushnil(L);
-				while (lua_next(L, -2)){
+				while (lua_next(L, -2)) {
 
-					if (lua_isstring(L, -1)){
+					if (lua_isstring(L, -1)) {
 						temp = lua_tolstring(L, -1, &len);
-						if (temp&&len > 0){
+						if (temp&&len > 0) {
 
 							memset(&Sockets[n], NULL, sizeof(SOCKET_INTERFACE));
 
-							if (strstr(temp, ":")){
+							if (strstr(temp, ":")) {
 								Sockets[n].addrv6 = (char*)calloc(len + 1, 1);
 								strcpy(Sockets[n].addrv6, temp);
 								Sockets[n].Socket = OpenReadAllSocket(Sockets[n].addrv6, buffer);
 							}
-							else{
+							else {
 								Sockets[n].addr = (char*)calloc(len + 1, 1);
 								strcpy(Sockets[n].addr, temp);
 								Sockets[n].Socket = OpenReadAllSocket(Sockets[n].addr, buffer);
 							}
 
-							if (Sockets[n].Socket == SOCKET_ERROR){
+							if (Sockets[n].Socket == SOCKET_ERROR) {
 								FormatErrorMessage(WSAGetLastError(), TRUE);
 								if (pause)
 									_getch();
 							}
-							else{
+							else {
 								if (Sockets[n].addr)
 									printf("Connected: %s\n", Sockets[n].addr);
 								else if (Sockets[n].addrv6)
@@ -402,7 +419,7 @@ SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int 
 				}
 			}
 			lua_pop(L, 1);
-		}			
+		}
 	}
 
 	lua_pop(L, 3);
@@ -410,7 +427,7 @@ SOCKET_INTERFACE * ConnectAll(lua_State*L, char * packet, int *numbsockets, int 
 	return Sockets;
 }
 
-SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize){
+SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize) {
 
 	SOCKET				listen_socket = -1;
 	struct sockaddr_in	socketdata;
@@ -419,7 +436,7 @@ SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize){
 	unsigned long		ul = 1;
 	struct sockaddr_in6 socket_struct;
 
-	if (strstr(addr, ":")){
+	if (strstr(addr, ":")) {
 
 		listen_socket = socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
 
@@ -427,7 +444,7 @@ SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize){
 		{
 			return SOCKET_ERROR;
 		}
-	
+
 		socket_struct.sin6_family = AF_INET6;
 		inet_pton(AF_INET6, addr, (void *)&socket_struct.sin6_addr.s6_addr);
 		socket_struct.sin6_port = htons(0);
@@ -438,7 +455,7 @@ SOCKET OpenReadAllSocket(const char * addr, int socketbuffersize){
 			return SOCKET_ERROR;
 		}
 	}
-	else{
+	else {
 
 		listen_socket = socket(AF_INET, SOCK_RAW, IPPROTO_IP);
 
@@ -489,7 +506,7 @@ char * ResolveIP(const char * ip, lua_State*L)
 	char				*ret = NULL;
 	int					size;
 
-	if (ip == NULL || strlen(ip) <= 0){
+	if (ip == NULL || strlen(ip) <= 0) {
 
 		host[127] = 0;
 		gethostname(host, 127);
@@ -498,7 +515,7 @@ char * ResolveIP(const char * ip, lua_State*L)
 	else
 		resultcode = getaddrinfo(ip, NULL, NULL, &result);
 
-	if (resultcode != 0){
+	if (resultcode != 0) {
 
 		printf("ResolveIP() Error: %d\n", resultcode);
 		return NULL;
@@ -509,28 +526,28 @@ char * ResolveIP(const char * ip, lua_State*L)
 
 	int n = 0;
 	//Loop the results
-	first[0] = '\0';	
-	for (ptr = result; ptr != NULL; ptr = ptr->ai_next){
+	first[0] = '\0';
+	for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
 
 		//Take the first ip4 we find
-		if (ptr->ai_family == AF_INET){
+		if (ptr->ai_family == AF_INET) {
 			if (first[0] == 0) {
 				InetNtop(AF_INET, &((struct sockaddr_in *) ptr->ai_addr)->sin_addr, first, 128);
 				host[0] = '\0';
-				strcpy(host,first);
+				strcpy(host, first);
 			}
 			else {
 				host[0] = '\0';
 				InetNtop(AF_INET, &((struct sockaddr_in *) ptr->ai_addr)->sin_addr, host, 128);
 			}
-			if(!L)
+			if (!L)
 				break;
 			else {
 				lua_pushstring(L, host);
 				lua_rawseti(L, -2, ++n);
 			}
 		}
-		else if(ptr->ai_family == AF_INET6 && L){
+		else if (ptr->ai_family == AF_INET6 && L) {
 			host[0] = '\0';
 			InetNtop(AF_INET6, &((struct sockaddr_in6 *) ptr->ai_addr)->sin6_addr, host, 128);
 			lua_pushstring(L, host);
@@ -540,7 +557,7 @@ char * ResolveIP(const char * ip, lua_State*L)
 
 	freeaddrinfo(result);
 
-	if (first[0] == '\0'){
+	if (first[0] == '\0') {
 		printf("ResolveIP() Error: found no ip4 or ip6 address\n");
 		return NULL;
 	}
@@ -554,7 +571,7 @@ char * ResolveIP(const char * ip, lua_State*L)
 	return ret;
 }
 
-void SetSocketBuffer(SOCKET socket, int buffsize){
+void SetSocketBuffer(SOCKET socket, int buffsize) {
 
 	if (buffsize <= 0)
 		return;
@@ -569,7 +586,7 @@ void SetSocketBuffer(SOCKET socket, int buffsize){
 	getsockopt(socket, SOL_SOCKET, SO_RCVBUF, (char *)&bufferLength, &bufferLengthPtrSize);
 }
 
-int HasData(SOCKET_INTERFACE * socket, char * buffer, int size){
+int HasData(SOCKET_INTERFACE * socket, char * buffer, int size) {
 
 	int bytes;
 	int error;
@@ -578,29 +595,29 @@ int HasData(SOCKET_INTERFACE * socket, char * buffer, int size){
 
 	if (socket == NULL)
 		return SOCKET_ERROR;
-	else if (socket->fp){
+	else if (socket->fp) {
 
 		error = pcap_next_ex(socket->fp, &header, &pkt_data);
-		
-		if (error == 1){
+
+		if (error == 1) {
 
 			if (header->len > size)
 				header->len = size;
 			else if (header->len <= 14)
 				return 0;
 
-			memcpy(buffer,pkt_data+14, header->len-14);
+			memcpy(buffer, pkt_data + 14, header->caplen - 14);
 
-			return header->len-14;
+			return header->len - 14;
 		}
 		else
 			return SOCKET_ERROR;
 	}
-	else{
+	else {
 		bytes = recv(socket->Socket, buffer, size, 0);
 		error;
 
-		if (bytes < 0){
+		if (bytes < 0) {
 
 			error = WSAGetLastError();
 
