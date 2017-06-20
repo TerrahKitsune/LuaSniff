@@ -141,7 +141,7 @@ TITLE="Sniffer"
 NODUP=true;
 
 --If true then the sniffer will attempt using winsock instead of pcap
-WINSOCK=false;
+WINSOCK=1;
 
 --Scroll to the bottom for the event function defs
 --void Recv(packet, interface); = runs when a packet is recived
@@ -156,6 +156,61 @@ WINSOCK=false;
 --void DumpStack() = prints the lua stack to the console
 --void Put(text) = puts the text (or binary) on the console as it is (no ending endline)
 --string (nil on fail) ReverseDNS(IP) = returns the host name from an IP
+
+local file = io.open("dump.txt", "w");
+
+local _print = print;
+
+print = function(str, extra)
+
+	if extra ~= nil then 
+		_print(str,extra);
+	else
+		_print(str);
+	end 
+	
+	if file then 
+	
+		if extra ~= nil then 
+			file:write(str.."\t"..tostring(extra).."\n");
+		else 
+			file:write(str.."\n");
+		end 
+		
+		file:flush();
+	end 
+end 
+
+local allowall = true;
+
+function Filter(data)
+	
+	if allowall then return true; end
+
+	if data.destination_port and data.source_port then 
+	
+		if IsPort(data, 7777) or IsPort(data, 7778) then 
+			return true;
+		else 
+			return false;
+		end
+    elseif data.protocol then
+
+		return data.protocol == "tcp" and Filter(data.data);
+	else 
+		return false;
+	end 
+end 
+
+function IsAddress(IPH, address)
+	
+	return IPH.destination == address or IPH.source == address;
+end 
+
+function IsPort(data, port)	
+	
+	return data.destination_port  == port or data.source_port == port;
+end
 
 --Concept function for user input
 --endkey (or nil = enter) is the key to end at
@@ -424,6 +479,10 @@ end
 --Interface is the IP of the interface (adapter) it was recived on
 --sniffer is the type of sniffer that got it (winsocket or pcap)
 function Recv(packet,interface,sniffer)
+
+	if not Filter(packet) then 
+		return;
+	end 
 
 	TotalCount = TotalCount + 1;
 
